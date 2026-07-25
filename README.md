@@ -42,15 +42,17 @@ Eine ausdruckbare Fassung von Plan, Rezepten und Einkaufsliste liegt unter
    schaltet Row Level Security ein und aktiviert Realtime. Das Skript ist so geschrieben, dass
    es sich gefahrlos erneut ausführen lässt.
 
-3. **Anmeldung konfigurieren:** Unter `Authentication → Providers` muss `Email` aktiv sein.
+3. **Registrierung freischalten:** Ebenfalls im `SQL Editor`
+   [`supabase/migrations/0002_signup_allowlist.sql`](supabase/migrations/0002_signup_allowlist.sql)
+   ausführen. Damit kann sich **nur** registrieren, wessen Adresse in der Liste steht — wichtig,
+   weil die App öffentlich erreichbar ist. Am Ende der Datei stehen die beiden Einzeiler zum
+   Ergänzen und Entziehen von Adressen.
+
+4. **Anmeldung konfigurieren:** Unter `Authentication → Providers` muss `Email` aktiv sein.
    Standardmäßig verlangt Supabase eine Bestätigung der E-Mail-Adresse; für zwei Konten in der
    Familie ist das gut so. Wer es sich einfacher machen will, schaltet unter
    `Authentication → Sign In / Providers → Email` die Bestätigung ab — dann kann man sich
    sofort nach der Registrierung anmelden.
-
-   Damit sich niemand Fremdes ein Konto anlegen kann, danach unter
-   `Authentication → Sign In / Providers` die Option **Allow new users to sign up** wieder
-   ausschalten. Beide Elternteile registrieren sich also zuerst, dann wird die Tür zugemacht.
 
 ### 2. Zugangsdaten
 
@@ -83,7 +85,7 @@ als **Site URL** die Produktionsdomain, unter **Redirect URLs** zusätzlich
 `https://dein-projekt.vercel.app/**` und `http://localhost:5173/**`. Ohne diesen Schritt laufen die
 Links aus den Bestätigungs- und „Passwort vergessen“-Mails ins Leere.
 
-### 4. Auf Handy und Tablet
+### 5. Auf Handy und Tablet
 
 Adresse im Browser öffnen, anmelden und über „Zum Home-Bildschirm hinzufügen“ ablegen — dann
 verhält sich die App wie eine installierte App. Die Anmeldung bleibt bestehen, bis man sich
@@ -102,7 +104,8 @@ So läuft es zu zweit ab:
 3. Elternteil B registriert sich auf dem eigenen Gerät und gibt den Code beim ersten Start ein.
 
 Der Code ist ein Schlüssel: Wer ihn kennt und ein Konto hat, kann dem Haushalt beitreten — also
-nicht in einen öffentlichen Chat stellen.
+nicht in einen öffentlichen Chat stellen. Ein Konto bekommt ohnehin nur, wessen Adresse in der
+Freischaltliste steht (siehe Schritt 3 oben).
 
 Fällt das Netz aus, arbeitet die App mit einer lokalen Kopie weiter und schreibt beim nächsten
 erfolgreichen Speichern zurück. Beim Abmelden wird diese Kopie vom Gerät gelöscht — praktisch für
