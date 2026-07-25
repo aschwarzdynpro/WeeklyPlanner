@@ -1,21 +1,15 @@
 import { useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import type { Settings } from '../types'
-import {
-  ensureHousehold,
-  joinHousehold,
-  signInWithEmail,
-  signOut,
-  supabaseConfigured,
-} from '../storage/supabase'
+import { signOut, updatePassword } from '../storage/supabase'
 import { Modal } from './Modal'
 
 interface Props {
   settings: Settings
   onChange: (patch: Partial<Settings>) => void
-  session: Session | null
-  householdId: string | null
-  onHouseholdChange: (id: string | null) => void
+  session: Session
+  householdId: string
+  onSignOut: () => void
   onClose: () => void
 }
 
@@ -24,24 +18,38 @@ export function SettingsSheet({
   onChange,
   session,
   householdId,
-  onHouseholdChange,
+  onSignOut,
   onClose,
 }: Props) {
-  const [email, setEmail] = useState('')
-  const [joinCode, setJoinCode] = useState('')
+  const [password, setPassword] = useState('')
   const [status, setStatus] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [copied, setCopied] = useState(false)
 
-  const run = async (fn: () => Promise<void>, done: string) => {
+  const changePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
     setBusy(true)
     setStatus(null)
+    setError(null)
     try {
-      await fn()
-      setStatus(done)
+      await updatePassword(password)
+      setPassword('')
+      setStatus('Passwort geändert.')
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : 'Es ist ein Fehler aufgetreten.')
+      setError(err instanceof Error ? err.message : 'Es ist etwas schiefgelaufen.')
     } finally {
       setBusy(false)
+    }
+  }
+
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(householdId)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setCopied(false)
     }
   }
 
@@ -84,101 +92,56 @@ export function SettingsSheet({
         Bettdienst-Feld, die gesamte Rotation über „Rotation tauschen“.
       </p>
 
-      <h3>Synchronisierung</h3>
-      {!supabaseConfigured ? (
-        <p className="muted small">
-          Aktuell wird alles nur auf diesem Gerät gespeichert. Für die Synchronisierung zwischen
-          mehreren Geräten trage <code>VITE_SUPABASE_URL</code> und <code>VITE_SUPABASE_ANON_KEY</code>{' '}
-          in die Datei <code>.env</code> ein (siehe README).
-        </p>
-      ) : !session ? (
-        <form
-          className="form"
-          onSubmit={(e) => {
-            e.preventDefault()
-            void run(() => signInWithEmail(email), 'Login-Link verschickt – schau in dein Postfach.')
-          }}
-        >
-          <label className="form-label">
-            E-Mail-Adresse
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="mama@beispiel.de"
-              required
-            />
-          </label>
-          <button className="primary-btn" type="submit" disabled={busy}>
-            Login-Link schicken
-          </button>
-        </form>
-      ) : (
-        <>
-          <p className="muted small">Angemeldet als {session.user.email}</p>
-          {householdId ? (
-            <>
-              <label className="form-label">
-                Haushalts-Code (für das zweite Handy)
-                <input readOnly value={householdId} onFocus={(e) => e.target.select()} />
-              </label>
-              <p className="muted small">
-                Diesen Code persönlich weitergeben – wer ihn kennt und angemeldet ist, kann dem
-                Haushalt beitreten.
-              </p>
-            </>
-          ) : (
-            <button
-              className="primary-btn"
-              disabled={busy}
-              onClick={() =>
-                void run(async () => {
-                  onHouseholdChange(await ensureHousehold())
-                }, 'Haushalt bereit.')
-              }
-            >
-              Haushalt anlegen / laden
-            </button>
-          )}
+      <h3>Geräte verbinden</h3>
+      <label className="form-label">
+        Haushalts-Code
+        <input readOnly value={householdId} onFocus={(e) => e.target.select()} />
+      </label>
+      <button className="secondary-btn" onClick={copyCode}>
+        {copied ? 'Kopiert ✓' : 'Code kopieren'}
+      </button>
+      <p className="muted small">
+        Das zweite Elternteil legt sich ein eigenes Konto an und gibt diesen Code beim ersten Start
+        ein – danach sehen beide denselben Plan. Der Code ist ein Schlüssel: nur persönlich
+        weitergeben.
+      </p>
 
-          <form
-            className="form"
-            onSubmit={(e) => {
-              e.preventDefault()
-              void run(async () => {
-                await joinHousehold(joinCode.trim())
-                onHouseholdChange(joinCode.trim())
-              }, 'Haushalt beigetreten.')
-            }}
-          >
-            <label className="form-label">
-              Einem bestehenden Haushalt beitreten
-              <input
-                value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value)}
-                placeholder="Haushalts-Code einfügen"
-              />
-            </label>
-            <button className="secondary-btn" type="submit" disabled={busy || !joinCode.trim()}>
-              Beitreten
-            </button>
-          </form>
+      <h3>Konto</h3>
+      <p className="muted small">Angemeldet als {session.user.email}</p>
 
-          <button
-            className="secondary-btn"
-            onClick={() =>
-              void run(async () => {
-                await signOut()
-                onHouseholdChange(null)
-              }, 'Abgemeldet.')
-            }
-          >
-            Abmelden
-          </button>
-        </>
-      )}
+      <form className="form" onSubmit={changePassword}>
+        <label>
+          Neues Passwort
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+            minLength={8}
+            placeholder="mindestens 8 Zeichen"
+          />
+        </label>
+        <button className="secondary-btn" type="submit" disabled={busy || password.length < 8}>
+          Passwort ändern
+        </button>
+      </form>
+
+      <button
+        className="danger-btn full-width"
+        onClick={() => {
+          onSignOut()
+          void signOut()
+        }}
+      >
+        Abmelden
+      </button>
+      <p className="muted small">
+        Beim Abmelden werden die auf diesem Gerät zwischengespeicherten Plandaten gelöscht – wichtig
+        auf einem Tablet, das mehrere nutzen.
+      </p>
 
       {status && <p className="status-line">{status}</p>}
+      {error && <p className="error-line">{error}</p>}
     </Modal>
   )
 }

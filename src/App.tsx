@@ -1,23 +1,24 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { usePlanner } from './hooks/usePlanner'
-import { localAdapter } from './storage/local'
+import { clearLocalCache, createLocalCache } from './storage/local'
 import {
   createSupabaseAdapter,
-  ensureHousehold,
+  getHousehold,
   getSession,
-  getStoredHouseholdId,
   onAuthChange,
-  setStoredHouseholdId,
   supabaseConfigured,
 } from './storage/supabase'
-import type { StorageAdapter } from './storage/types'
 import { fromISODate, formatRange, isoWeekNumber } from './lib/week'
 import { MealPlan } from './components/MealPlan'
 import { ShoppingList } from './components/ShoppingList'
 import { Schedule } from './components/Schedule'
 import { RecipeLibrary } from './components/RecipeLibrary'
 import { SettingsSheet } from './components/SettingsSheet'
+import { AuthScreen } from './components/AuthScreen'
+import { HouseholdScreen } from './components/HouseholdScreen'
+import { NewPasswordScreen } from './components/NewPasswordScreen'
+import { SetupNotice } from './components/SetupNotice'
 
 type Tab = 'essen' | 'einkauf' | 'termine' | 'rezepte'
 
@@ -29,43 +30,80 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
 ]
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('essen')
-  const [showSettings, setShowSettings] = useState(false)
   const [session, setSession] = useState<Session | null>(null)
-  const [householdId, setHouseholdId] = useState<string | null>(() => getStoredHouseholdId())
+  const [checkingSession, setCheckingSession] = useState(true)
+  const [recovery, setRecovery] = useState(false)
+  const [householdId, setHouseholdId] = useState<string | null>(null)
+  const [householdLoading, setHouseholdLoading] = useState(false)
 
-  // Supabase-Session beobachten und Haushalt sicherstellen.
+  // --- Anmeldung im Blick behalten -------------------------------------------
   useEffect(() => {
-    if (!supabaseConfigured) return
-    void getSession().then(setSession)
-    return onAuthChange(setSession)
+    if (!supabaseConfigured) {
+      setCheckingSession(false)
+      return
+    }
+    void getSession().then((s) => {
+      setSession(s)
+      setCheckingSession(false)
+    })
+    return onAuthChange((s, isRecovery) => {
+      setSession(s)
+      setCheckingSession(false)
+      if (isRecovery) setRecovery(true)
+      if (!s) {
+        // Abgemeldet: nichts Verwertbares auf dem Gerät zurücklassen.
+        setHouseholdId(null)
+        setRecovery(false)
+        clearLocalCache()
+      }
+    })
   }, [])
 
+  // --- Haushalt des Kontos ermitteln -----------------------------------------
   useEffect(() => {
-    if (!supabaseConfigured || !session || householdId) return
-    ensureHousehold()
+    if (!session) return
+    setHouseholdLoading(true)
+    getHousehold()
       .then(setHouseholdId)
       .catch((err) => console.warn('Haushalt konnte nicht geladen werden:', err))
-  }, [session, householdId])
+      .finally(() => setHouseholdLoading(false))
+  }, [session])
 
-  const adapter: StorageAdapter = useMemo(() => {
-    if (supabaseConfigured && session && householdId) {
-      try {
-        return createSupabaseAdapter(householdId)
-      } catch (err) {
-        console.warn('Supabase nicht verfügbar, nutze lokale Speicherung:', err)
-      }
-    }
-    return localAdapter
-  }, [session, householdId])
+  if (!supabaseConfigured) return <SetupNotice />
+  if (checkingSession) return <SplashScreen />
+  if (recovery) return <NewPasswordScreen onDone={() => setRecovery(false)} />
+  if (!session) return <AuthScreen />
+  if (householdLoading) return <SplashScreen />
+  if (!householdId) {
+    return <HouseholdScreen email={session.user.email} onReady={setHouseholdId} />
+  }
+
+  return <Planner session={session} householdId={householdId} />
+}
+
+function SplashScreen() {
+  return (
+    <div className="auth-screen">
+      <div className="auth-card">
+        <p className="muted">Einen Moment …</p>
+      </div>
+    </div>
+  )
+}
+
+function Planner({ session, householdId }: { session: Session; householdId: string }) {
+  const [tab, setTab] = useState<Tab>('essen')
+  const [showSettings, setShowSettings] = useState(false)
+
+  const adapter = useMemo(() => createSupabaseAdapter(householdId), [householdId])
+  const cache = useMemo(() => createLocalCache(householdId), [householdId])
 
   const { weekStart, week, settings, sync, updateWeek, updateSettings, goToWeek, goToToday } =
-    usePlanner(adapter)
+    usePlanner(adapter, cache)
 
-  const handleHouseholdChange = (id: string | null) => {
-    setStoredHouseholdId(id)
-    setHouseholdId(id)
-  }
+  const handleSignOut = useCallback(() => {
+    setShowSettings(false)
+  }, [])
 
   return (
     <div className="app">
@@ -132,11 +170,10 @@ export default function App() {
       </main>
 
       <footer className="app-foot">
-        <span className={`sync sync-${sync}`}>
-          {sync === 'lokal' && 'Auf diesem Gerät gespeichert'}
-          {sync === 'gespeichert' && 'Mit Supabase synchronisiert'}
+        <span className={sync === 'offline' ? 'sync-offline' : undefined}>
+          {sync === 'gespeichert' && 'Gespeichert und auf allen Geräten synchron'}
           {sync === 'lädt' && 'Lädt …'}
-          {sync === 'fehler' && 'Offline – lokal gesichert'}
+          {sync === 'offline' && 'Offline – Änderungen liegen auf diesem Gerät bereit'}
         </span>
       </footer>
 
@@ -146,7 +183,7 @@ export default function App() {
           onChange={updateSettings}
           session={session}
           householdId={householdId}
-          onHouseholdChange={handleHouseholdChange}
+          onSignOut={handleSignOut}
           onClose={() => setShowSettings(false)}
         />
       )}

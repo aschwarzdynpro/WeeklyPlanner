@@ -105,9 +105,29 @@ create policy docs_delete on public.planner_docs
 -- RPCs
 -- ---------------------------------------------------------------------------
 
--- Liefert den Haushalt des angemeldeten Nutzers; legt beim ersten Aufruf
--- einen neuen an.
-create or replace function public.ensure_household()
+-- Aus einer früheren Fassung – wird durch get_household/create_household ersetzt.
+drop function if exists public.ensure_household();
+
+-- Liefert den Haushalt des angemeldeten Nutzers, oder NULL, wenn er noch
+-- keinem angehört. Die App zeigt dann die Auswahl "anlegen oder beitreten".
+create or replace function public.get_household()
+returns uuid
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select m.household_id
+  from public.household_members m
+  where m.user_id = auth.uid()
+  order by m.created_at
+  limit 1;
+$$;
+
+-- Legt einen Haushalt an und macht den Aufrufer zum Mitglied. Gehört der
+-- Nutzer schon zu einem Haushalt, wird dieser zurückgegeben – so entstehen
+-- durch Doppelklicks keine verwaisten Haushalte.
+create or replace function public.create_household()
 returns uuid
 language plpgsql
 security definer
@@ -164,9 +184,12 @@ begin
 end;
 $$;
 
-revoke all on function public.ensure_household() from public, anon;
+-- Nur angemeldete Nutzer dürfen die Funktionen aufrufen – anon bleibt außen vor.
+revoke all on function public.get_household() from public, anon;
+revoke all on function public.create_household() from public, anon;
 revoke all on function public.join_household(uuid) from public, anon;
-grant execute on function public.ensure_household() to authenticated;
+grant execute on function public.get_household() to authenticated;
+grant execute on function public.create_household() to authenticated;
 grant execute on function public.join_household(uuid) to authenticated;
 
 -- ---------------------------------------------------------------------------

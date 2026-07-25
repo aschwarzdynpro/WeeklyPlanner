@@ -2,15 +2,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DEFAULT_SETTINGS } from '../types'
 import type { Settings, WeekData } from '../types'
 import { addDays, fromISODate, normalizeWeek, startOfWeek, toISODate } from '../lib/week'
-import { localAdapter } from '../storage/local'
 import type { StorageAdapter } from '../storage/types'
 
-export type SyncState = 'lokal' | 'lädt' | 'gespeichert' | 'fehler'
+export type SyncState = 'lädt' | 'gespeichert' | 'offline'
 
 const SETTINGS_KEY = 'settings'
 const weekKey = (weekStart: string) => `week:${weekStart}`
 
-export function usePlanner(adapter: StorageAdapter) {
+/**
+ * Lädt und speichert die Wochendaten.
+ *
+ * `adapter` ist der führende Speicher (Supabase), `cache` die lokale Kopie
+ * für den Offline-Fall. Geschrieben wird immer in beide.
+ */
+export function usePlanner(adapter: StorageAdapter, cache: StorageAdapter) {
   const [weekStart, setWeekStart] = useState(() => toISODate(startOfWeek(new Date())))
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   const [week, setWeek] = useState<WeekData | null>(null)
@@ -25,17 +30,19 @@ export function usePlanner(adapter: StorageAdapter) {
   useEffect(() => {
     let cancelled = false
     ;(async () => {
+      let stored: Settings | null = null
       try {
-        const stored = await adapter.load<Settings>(SETTINGS_KEY)
-        if (!cancelled && stored) setSettings({ ...DEFAULT_SETTINGS, ...stored })
+        stored = await adapter.load<Settings>(SETTINGS_KEY)
       } catch (err) {
         console.warn('Einstellungen konnten nicht geladen werden:', err)
       }
+      stored ??= await cache.load<Settings>(SETTINGS_KEY)
+      if (!cancelled && stored) setSettings({ ...DEFAULT_SETTINGS, ...stored })
     })()
     return () => {
       cancelled = true
     }
-  }, [adapter])
+  }, [adapter, cache])
 
   // --- Woche laden -----------------------------------------------------------
   useEffect(() => {
@@ -44,46 +51,42 @@ export function usePlanner(adapter: StorageAdapter) {
     dirty.current = false
     ;(async () => {
       try {
-        let raw = await adapter.load<WeekData>(weekKey(weekStart))
-        if (raw === null && adapter.kind !== 'local') {
-          // Offline-Kopie als Rückfallebene
-          raw = await localAdapter.load<WeekData>(weekKey(weekStart))
-        }
+        const raw =
+          (await adapter.load<WeekData>(weekKey(weekStart))) ??
+          (await cache.load<WeekData>(weekKey(weekStart)))
         if (cancelled) return
         setWeek(normalizeWeek(raw, weekStart, settingsRef.current))
-        setSync(adapter.kind === 'local' ? 'lokal' : 'gespeichert')
+        setSync('gespeichert')
       } catch (err) {
         console.warn('Woche konnte nicht geladen werden:', err)
+        const fallback = await cache.load<WeekData>(weekKey(weekStart))
         if (cancelled) return
-        const fallback = await localAdapter.load<WeekData>(weekKey(weekStart))
         setWeek(normalizeWeek(fallback, weekStart, settingsRef.current))
-        setSync('fehler')
+        setSync('offline')
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [adapter, weekStart])
+  }, [adapter, cache, weekStart])
 
   // --- Woche speichern (entprellt) -------------------------------------------
   useEffect(() => {
     if (!week || !dirty.current) return
     const handle = setTimeout(async () => {
       const payload = { ...week, updatedAt: new Date().toISOString() }
+      void cache.save(weekKey(week.weekStart), payload)
       try {
         await adapter.save(weekKey(week.weekStart), payload)
-        // Immer zusätzlich lokal spiegeln – dann ist die Woche auch offline da.
-        if (adapter.kind !== 'local') await localAdapter.save(weekKey(week.weekStart), payload)
         dirty.current = false
-        setSync(adapter.kind === 'local' ? 'lokal' : 'gespeichert')
+        setSync('gespeichert')
       } catch (err) {
         console.warn('Speichern fehlgeschlagen:', err)
-        await localAdapter.save(weekKey(week.weekStart), payload)
-        setSync('fehler')
+        setSync('offline')
       }
     }, 400)
     return () => clearTimeout(handle)
-  }, [adapter, week])
+  }, [adapter, cache, week])
 
   // --- Änderungen von anderen Geräten ----------------------------------------
   useEffect(() => {
@@ -107,12 +110,14 @@ export function usePlanner(adapter: StorageAdapter) {
     (patch: Partial<Settings>) => {
       setSettings((current) => {
         const next = { ...current, ...patch }
-        void adapter.save(SETTINGS_KEY, next)
-        if (adapter.kind !== 'local') void localAdapter.save(SETTINGS_KEY, next)
+        void cache.save(SETTINGS_KEY, next)
+        void adapter.save(SETTINGS_KEY, next).catch((err) => {
+          console.warn('Einstellungen konnten nicht gespeichert werden:', err)
+        })
         return next
       })
     },
-    [adapter],
+    [adapter, cache],
   )
 
   const goToWeek = useCallback((offset: number) => {

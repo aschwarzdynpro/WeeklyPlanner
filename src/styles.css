@@ -706,3 +706,114 @@ button:focus-visible {
 .rotation-hint {
   margin: -0.4rem 0 1rem;
 }
+
+/* --- Anmelde- und Einrichtungsbildschirme --------------------------------- */
+
+.auth-screen {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1rem, 5vw, 2.5rem);
+}
+
+.auth-card {
+  width: min(30rem, 100%);
+  padding: clamp(1.25rem, 4vw, 2rem);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.auth-card h1 {
+  font-size: clamp(1.2rem, 4vw, 1.5rem);
+  margin-bottom: 0.35rem;
+}
+
+.auth-card h2 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  margin: 1.5rem 0 0.75rem;
+}
+
+.auth-card .primary-btn,
+.auth-card .secondary-btn {
+  width: 100%;
+}
+
+.auth-switch {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.error-line {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: #fdecec;
+  color: #a33a3a;
+  border-radius: 10px;
+  font-size: 0.88rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .error-line {
+    background: #3a2020;
+    color: #f0a0a0;
+  }
+}
+
+.code-block {
+  padding: 0.75rem;
+  background: var(--surface-2);
+  border-radius: 10px;
+  font-size: 0.8rem;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.sync-offline {
+  color: #c25757;
+}
+
+/* --- Tablet: mehr Platz, größere Tippflächen ------------------------------ */
+
+@media (min-width: 700px) and (pointer: coarse) {
+  .tab,
+  .primary-btn,
+  .secondary-btn,
+  .danger-btn {
+    padding-block: 0.7rem;
+  }
+
+  .icon-btn {
+    width: 2.6rem;
+    height: 2.6rem;
+  }
+
+  .meal-main,
+  .picker-item,
+  .event,
+  .bedtime {
+    padding: 0.75rem;
+  }
+
+  .shop-list label {
+    padding-block: 0.75rem;
+  }
+
+  .shop-list input[type='checkbox'] {
+    width: 1.35rem;
+    height: 1.35rem;
+  }
+}

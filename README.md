@@ -4,8 +4,9 @@ Eine kleine Web-App für die Wochenplanung einer Familie: Essensplan von Montag 
 die passenden Rezepte, eine automatisch berechnete Einkaufsliste und ein Terminplan, in dem
 abends der Bettdienst zwischen Mama und Papa rotiert.
 
-Die App läuft sofort ohne jede Einrichtung — dann wird alles im Browser des Geräts gespeichert.
-Wer den Plan auf mehreren Geräten synchron haben möchte, hängt optional Supabase an.
+Der Zugriff ist durch einen Login mit E-Mail und Passwort geschützt. Die Daten liegen in Supabase
+und stehen dadurch auf allen Geräten der Familie zur Verfügung — Handy, Tablet und Laptop zeigen
+denselben Plan, Änderungen erscheinen dank Realtime sofort auf dem jeweils anderen Gerät.
 
 ## Was drin ist
 
@@ -29,55 +30,84 @@ dreht die ganze Reihenfolge um.
 Eine ausdruckbare Fassung von Plan, Rezepten und Einkaufsliste liegt unter
 [`docs/Wochenplan.md`](docs/Wochenplan.md).
 
-## Starten
+## Einrichten
 
-```bash
-npm install
-npm run dev
-```
-
-Die App läuft dann auf <http://localhost:5173>. Ein Produktions-Build entsteht mit `npm run build`
-im Ordner `dist/` und lässt sich auf jedem Static-Hosting (Netlify, Vercel, GitHub Pages,
-Supabase Hosting) ablegen.
-
-Auf dem Handy: Seite im Browser öffnen und über „Zum Home-Bildschirm hinzufügen“ ablegen —
-dann verhält sie sich wie eine App.
-
-## Synchronisierung mit Supabase (optional)
-
-Ohne diesen Schritt speichert die App alles lokal im Browser. Das reicht, wenn nur ein Gerät
-im Spiel ist. Für zwei Handys plus Laptop:
+### 1. Supabase-Projekt vorbereiten
 
 1. **Projekt anlegen** auf [supabase.com](https://supabase.com) (der kostenlose Tarif genügt).
 
 2. **Schema einspielen:** Im Supabase-Dashboard `SQL Editor` öffnen, den Inhalt von
    [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql) einfügen und
    ausführen. Das legt die Tabellen `households`, `household_members` und `planner_docs` an,
-   schaltet Row Level Security ein und aktiviert Realtime.
+   schaltet Row Level Security ein und aktiviert Realtime. Das Skript ist so geschrieben, dass
+   es sich gefahrlos erneut ausführen lässt.
 
-3. **Zugangsdaten eintragen:** `.env.example` nach `.env` kopieren und die beiden Werte aus
-   `Project Settings → API` einsetzen:
+3. **Anmeldung konfigurieren:** Unter `Authentication → Providers` muss `Email` aktiv sein.
+   Standardmäßig verlangt Supabase eine Bestätigung der E-Mail-Adresse; für zwei Konten in der
+   Familie ist das gut so. Wer es sich einfacher machen will, schaltet unter
+   `Authentication → Sign In / Providers → Email` die Bestätigung ab — dann kann man sich
+   sofort nach der Registrierung anmelden.
 
-   ```
-   VITE_SUPABASE_URL=https://dein-projekt.supabase.co
-   VITE_SUPABASE_ANON_KEY=...
-   ```
+   Damit sich niemand Fremdes ein Konto anlegen kann, danach unter
+   `Authentication → Sign In / Providers` die Option **Allow new users to sign up** wieder
+   ausschalten. Beide Elternteile registrieren sich also zuerst, dann wird die Tür zugemacht.
 
-   Nur den `anon`-Key verwenden — er ist für den Browser gedacht. Der `service_role`-Key gehört
-   niemals in eine Frontend-App.
+### 2. Lokal starten
 
-4. **Anmelden:** App neu starten, ⚙️ öffnen, E-Mail eintragen, „Login-Link schicken“. Supabase
-   verschickt einen Magic Link; nach dem Klick ist man angemeldet und ein Haushalt wird angelegt.
+```bash
+npm install
+cp .env.example .env    # Werte aus Project Settings → API eintragen
+npm run dev
+```
 
-5. **Zweites Gerät dazuholen:** Der Haushalts-Code (eine UUID) steht in den Einstellungen. Auf dem
-   zweiten Gerät anmelden, den Code unter „Einem bestehenden Haushalt beitreten“ einfügen —
-   fertig. Änderungen erscheinen dank Realtime sofort auf dem anderen Gerät.
+```
+VITE_SUPABASE_URL=https://dein-projekt.supabase.co
+VITE_SUPABASE_ANON_KEY=...
+```
 
-   Der Code ist wie ein Schlüssel: Wer ihn kennt und angemeldet ist, kann dem Haushalt beitreten.
-   Also nur persönlich weitergeben, nicht in einen öffentlichen Chat stellen.
+Nur den `anon`-Key verwenden — er ist für den Browser gedacht und durch Row Level Security
+abgesichert. Der `service_role`-Key gehört niemals in eine Frontend-App.
 
-Fällt das Netz aus, arbeitet die App mit der lokalen Kopie weiter und schreibt beim nächsten
-erfolgreichen Speichern zurück.
+Die App läuft dann auf <http://localhost:5173>.
+
+### 3. Auf Vercel veröffentlichen
+
+Repository in Vercel importieren — durch [`vercel.json`](vercel.json) sind Framework, Build-Befehl
+und Ausgabeordner bereits gesetzt. Zwei Dinge noch:
+
+1. Unter `Settings → Environment Variables` dieselben zwei Werte hinterlegen
+   (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`). Sie werden beim Build eingebacken, also nach
+   einer Änderung neu deployen.
+
+2. In Supabase unter `Authentication → URL Configuration` die Vercel-Adresse eintragen:
+   als **Site URL** die Produktionsdomain, unter **Redirect URLs** zusätzlich
+   `https://dein-projekt.vercel.app/**` und `http://localhost:5173/**`. Ohne diesen Schritt
+   laufen die Links aus den Bestätigungs- und „Passwort vergessen“-Mails ins Leere.
+
+### 4. Auf Handy und Tablet
+
+Adresse im Browser öffnen, anmelden und über „Zum Home-Bildschirm hinzufügen“ ablegen — dann
+verhält sich die App wie eine installierte App. Die Anmeldung bleibt bestehen, bis man sich
+abmeldet.
+
+## Konten und Haushalt
+
+Beim ersten Start nach der Registrierung fragt die App, ob ein **neuer Haushalt** angelegt werden
+soll oder ob man einem bestehenden **beitritt**. Ein Haushalt bündelt den Plan; beide Elternteile
+haben ein eigenes Konto mit eigenem Passwort und arbeiten im selben Haushalt.
+
+So läuft es zu zweit ab:
+
+1. Elternteil A registriert sich und legt einen Haushalt an.
+2. In den Einstellungen (⚙️) steht der **Haushalts-Code**. Kopieren und persönlich weitergeben.
+3. Elternteil B registriert sich auf dem eigenen Gerät und gibt den Code beim ersten Start ein.
+
+Der Code ist ein Schlüssel: Wer ihn kennt und ein Konto hat, kann dem Haushalt beitreten — also
+nicht in einen öffentlichen Chat stellen.
+
+Fällt das Netz aus, arbeitet die App mit einer lokalen Kopie weiter und schreibt beim nächsten
+erfolgreichen Speichern zurück. Beim Abmelden wird diese Kopie vom Gerät gelöscht — praktisch für
+ein Tablet, das mehrere in die Hand nehmen.
 
 ## Aufbau
 
@@ -86,10 +116,10 @@ src/
   data/recipes.ts       Rezeptbibliothek (Zutaten, Schritte, Kinder-Tipps)
   lib/week.ts           Wochenlogik: Kalenderwoche, Datumsrechnung, Bettdienst-Rotation
   lib/shopping.ts       Einkaufsliste aus dem Wochenplan berechnen und gruppieren
-  storage/local.ts      Speicherung im Browser (Standard)
-  storage/supabase.ts   Speicherung in Supabase inkl. Login und Realtime
+  storage/local.ts      Offline-Kopie im Browser, getrennt je Haushalt
+  storage/supabase.ts   Login, Haushalte und Datenspeicher inkl. Realtime
   hooks/usePlanner.ts   Laden, Speichern (entprellt) und Wochenwechsel
-  components/           Oberfläche: Essensplan, Einkauf, Termine, Rezepte, Einstellungen
+  components/           Oberfläche: Login, Essensplan, Einkauf, Termine, Rezepte, Einstellungen
 supabase/migrations/    SQL-Schema für Supabase
 scripts/generate-plan.ts  Erzeugt docs/Wochenplan.md aus den Rezeptdaten (`npm run plan`)
 ```
