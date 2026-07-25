@@ -52,37 +52,36 @@ Eine ausdruckbare Fassung von Plan, Rezepten und Einkaufsliste liegt unter
    `Authentication → Sign In / Providers` die Option **Allow new users to sign up** wieder
    ausschalten. Beide Elternteile registrieren sich also zuerst, dann wird die Tür zugemacht.
 
-### 2. Lokal starten
+### 2. Zugangsdaten
+
+Die Werte des Projekts stehen in [`.env.production`](.env.production) und liegen bewusst im
+Repository: Vite backt sie beim Build in das JavaScript ein, sie sind für jeden Besucher der Seite
+ohnehin sichtbar. Genau dafür ist der `anon`-Key gedacht — er erlaubt für sich genommen nichts,
+weil jede Tabelle durch Row Level Security geschützt ist. Der `service_role`-Key gehört niemals in
+eine Frontend-App und taucht hier auch nirgends auf.
+
+Für ein anderes Supabase-Projekt einfach die beiden Werte in dieser Datei austauschen.
+
+### 3. Lokal starten
 
 ```bash
 npm install
-cp .env.example .env    # Werte aus Project Settings → API eintragen
+cp .env.production .env   # der Entwicklungsserver liest .env, nicht .env.production
 npm run dev
 ```
 
-```
-VITE_SUPABASE_URL=https://dein-projekt.supabase.co
-VITE_SUPABASE_ANON_KEY=...
-```
-
-Nur den `anon`-Key verwenden — er ist für den Browser gedacht und durch Row Level Security
-abgesichert. Der `service_role`-Key gehört niemals in eine Frontend-App.
-
 Die App läuft dann auf <http://localhost:5173>.
 
-### 3. Auf Vercel veröffentlichen
+### 4. Auf Vercel veröffentlichen
 
 Repository in Vercel importieren — durch [`vercel.json`](vercel.json) sind Framework, Build-Befehl
-und Ausgabeordner bereits gesetzt. Zwei Dinge noch:
+und Ausgabeordner gesetzt, und die Zugangsdaten kommen aus `.env.production`. Es ist also nichts
+weiter zu konfigurieren.
 
-1. Unter `Settings → Environment Variables` dieselben zwei Werte hinterlegen
-   (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`). Sie werden beim Build eingebacken, also nach
-   einer Änderung neu deployen.
-
-2. In Supabase unter `Authentication → URL Configuration` die Vercel-Adresse eintragen:
-   als **Site URL** die Produktionsdomain, unter **Redirect URLs** zusätzlich
-   `https://dein-projekt.vercel.app/**` und `http://localhost:5173/**`. Ohne diesen Schritt
-   laufen die Links aus den Bestätigungs- und „Passwort vergessen“-Mails ins Leere.
+Danach einmal in Supabase unter `Authentication → URL Configuration` die Vercel-Adresse eintragen:
+als **Site URL** die Produktionsdomain, unter **Redirect URLs** zusätzlich
+`https://dein-projekt.vercel.app/**` und `http://localhost:5173/**`. Ohne diesen Schritt laufen die
+Links aus den Bestätigungs- und „Passwort vergessen“-Mails ins Leere.
 
 ### 4. Auf Handy und Tablet
 

@@ -12,8 +12,8 @@ export function SetupNotice() {
         </h1>
         <p className="muted">Die App ist noch nicht mit der Datenbank verbunden.</p>
         <p>
-          Lege eine Datei <code>.env</code> nach dem Vorbild von <code>.env.example</code> an und
-          trage die beiden Werte aus deinem Supabase-Projekt ein:
+          Kopiere <code>.env.production</code> nach <code>.env</code> – oder trage die beiden Werte
+          aus deinem Supabase-Projekt von Hand ein:
         </p>
         <pre className="code-block">
           VITE_SUPABASE_URL=https://dein-projekt.supabase.co{'\n'}
