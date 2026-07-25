@@ -52,6 +52,12 @@ as $$
   );
 $$;
 
+-- Die Funktion ist ein Helfer für die Policies, keine API: anon darf sie
+-- nicht aufrufen. `authenticated` braucht das Recht, weil Policy-Ausdrücke
+-- mit den Rechten des abfragenden Nutzers ausgewertet werden.
+revoke all on function public.is_household_member(uuid) from public, anon;
+grant execute on function public.is_household_member(uuid) to authenticated;
+
 -- ---------------------------------------------------------------------------
 -- Row Level Security
 -- ---------------------------------------------------------------------------
