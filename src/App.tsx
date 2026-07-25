@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { usePlanner } from './hooks/usePlanner'
+import { useRecipes } from './hooks/useRecipes'
 import { clearLocalCache, createLocalCache } from './storage/local'
 import {
   createSupabaseAdapter,
@@ -100,6 +101,7 @@ function Planner({ session, householdId }: { session: Session; householdId: stri
 
   const { weekStart, week, settings, sync, updateWeek, updateSettings, goToWeek, goToToday } =
     usePlanner(adapter, cache)
+  const library = useRecipes(householdId)
 
   const handleSignOut = useCallback(() => {
     setShowSettings(false)
@@ -154,9 +156,20 @@ function Planner({ session, householdId }: { session: Session; householdId: stri
         {!week ? (
           <p className="muted">Wird geladen …</p>
         ) : tab === 'essen' ? (
-          <MealPlan week={week} settings={settings} onChange={updateWeek} />
+          <MealPlan
+            week={week}
+            settings={settings}
+            recipes={library.all}
+            recipeById={library.byId}
+            onChange={updateWeek}
+          />
         ) : tab === 'einkauf' ? (
-          <ShoppingList week={week} settings={settings} onChange={updateWeek} />
+          <ShoppingList
+            week={week}
+            settings={settings}
+            recipeById={library.byId}
+            onChange={updateWeek}
+          />
         ) : tab === 'termine' ? (
           <Schedule
             week={week}
@@ -165,7 +178,7 @@ function Planner({ session, householdId }: { session: Session; householdId: stri
             onSettingsChange={updateSettings}
           />
         ) : (
-          <RecipeLibrary settings={settings} />
+          <RecipeLibrary settings={settings} library={library} />
         )}
       </main>
 

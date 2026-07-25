@@ -817,3 +817,36 @@ button:focus-visible {
     height: 1.35rem;
   }
 }
+
+/* --- Rezept-Nachschub ----------------------------------------------------- */
+
+.generate-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  margin-bottom: 1.25rem;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+}
+
+.generate-box p {
+  margin: 0.2rem 0 0;
+  max-width: 42ch;
+}
+
+.badge-new {
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  vertical-align: 0.1em;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 999px;
+}

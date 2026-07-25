@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { DAYS } from '../types'
 import type { DayKey, Recipe, Settings, WeekData } from '../types'
-import { RECIPES, RECIPE_BY_ID } from '../data/recipes'
 import { dateForDay, formatDayDate, toISODate } from '../lib/week'
 import { Modal } from './Modal'
 import { RecipeSheet } from './RecipeSheet'
@@ -9,10 +8,12 @@ import { RecipeSheet } from './RecipeSheet'
 interface Props {
   week: WeekData
   settings: Settings
+  recipes: Recipe[]
+  recipeById: Map<string, Recipe>
   onChange: (mutate: (draft: WeekData) => WeekData) => void
 }
 
-export function MealPlan({ week, settings, onChange }: Props) {
+export function MealPlan({ week, settings, recipes, recipeById, onChange }: Props) {
   const [openRecipe, setOpenRecipe] = useState<Recipe | null>(null)
   const [picking, setPicking] = useState<DayKey | null>(null)
   const today = toISODate(new Date())
@@ -35,7 +36,7 @@ export function MealPlan({ week, settings, onChange }: Props) {
       <div className="day-grid">
         {DAYS.map((day) => {
           const slot = week.meals[day.key]
-          const recipe = slot.recipeId ? RECIPE_BY_ID.get(slot.recipeId) : undefined
+          const recipe = slot.recipeId ? recipeById.get(slot.recipeId) : undefined
           const date = dateForDay(week.weekStart, day.key)
           const isToday = toISODate(date) === today
           const weekend = day.key === 'sa' || day.key === 'so'
@@ -98,7 +99,7 @@ export function MealPlan({ week, settings, onChange }: Props) {
           onClose={() => setPicking(null)}
         >
           <div className="picker-list">
-            {RECIPES.map((r) => (
+            {recipes.map((r) => (
               <button key={r.id} className="picker-item" onClick={() => setMeal(picking, r.id)}>
                 <span className="meal-emoji" aria-hidden="true">
                   {r.emoji}

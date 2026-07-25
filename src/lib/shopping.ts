@@ -1,6 +1,5 @@
 import { CATEGORIES, DAYS } from '../types'
-import type { Category, ShoppingItem, WeekData } from '../types'
-import { RECIPE_BY_ID } from '../data/recipes'
+import type { Category, Recipe, ShoppingItem, WeekData } from '../types'
 import { uid } from './week'
 
 /** Menge hübsch runden: 0,5 bleibt 0,5 – 133,3333 wird 133. */
@@ -20,13 +19,17 @@ export function formatQty(qty: number | null, unit: string): string {
  * Gleiche Zutat + gleiche Einheit werden addiert. Bereits abgehakte
  * Positionen und manuell ergänzte Einträge bleiben erhalten.
  */
-export function buildShoppingList(week: WeekData, servings: number): ShoppingItem[] {
+export function buildShoppingList(
+  week: WeekData,
+  servings: number,
+  recipeById: Map<string, Recipe>,
+): ShoppingItem[] {
   const aggregated = new Map<string, ShoppingItem>()
 
   for (const day of DAYS) {
     const recipeId = week.meals[day.key]?.recipeId
     if (!recipeId) continue
-    const recipe = RECIPE_BY_ID.get(recipeId)
+    const recipe = recipeById.get(recipeId)
     if (!recipe) continue
     const factor = servings / recipe.servings
 

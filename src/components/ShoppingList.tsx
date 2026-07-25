@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { Settings, WeekData } from '../types'
+import type { Recipe, Settings, WeekData } from '../types'
 import {
   buildShoppingList,
   formatQty,
@@ -11,10 +11,11 @@ import {
 interface Props {
   week: WeekData
   settings: Settings
+  recipeById: Map<string, Recipe>
   onChange: (mutate: (draft: WeekData) => WeekData) => void
 }
 
-export function ShoppingList({ week, settings, onChange }: Props) {
+export function ShoppingList({ week, settings, recipeById, onChange }: Props) {
   const [newItem, setNewItem] = useState('')
   const [copied, setCopied] = useState(false)
 
@@ -22,7 +23,7 @@ export function ShoppingList({ week, settings, onChange }: Props) {
   const open = week.shopping.filter((i) => !i.checked).length
 
   const regenerate = () => {
-    onChange((draft) => ({ ...draft, shopping: buildShoppingList(draft, settings.servings) }))
+    onChange((draft) => ({ ...draft, shopping: buildShoppingList(draft, settings.servings, recipeById) }))
   }
 
   const toggle = (id: string) => {

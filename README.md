@@ -91,6 +91,44 @@ Adresse im Browser öffnen, anmelden und über „Zum Home-Bildschirm hinzufüge
 verhält sich die App wie eine installierte App. Die Anmeldung bleibt bestehen, bis man sich
 abmeldet.
 
+## Wöchentlich neue Rezepte
+
+Die mitgelieferte Bibliothek deckt zwei Monate ohne Wiederholung ab. Damit es danach nicht
+langweilig wird, kann die App neue Rezepte erzeugen lassen: Im Reiter **Rezepte** holt
+„3 neue Rezepte holen" passende Vorschläge, die sofort im Essensplan und in der Einkaufsliste
+nutzbar sind. Zeigt der Kasten „Es ist über eine Woche her", ist Nachschub fällig.
+
+Technisch läuft das über die Edge Function
+[`supabase/functions/generate-recipes`](supabase/functions/generate-recipes/index.ts): Sie ruft
+Claude Opus 5 mit einem festen JSON-Schema auf, sodass Zutaten, Mengen, Kategorien und Schritte
+im selben Format ankommen wie die eingebauten Rezepte. Der Haushalt wird aus dem Token des
+angemeldeten Nutzers abgeleitet, nicht aus dem Request — fremde Haushalte sind damit nicht
+ansprechbar. Antworten werden geprüft, bevor sie gespeichert werden: zu kurze oder unvollständige
+Rezepte fliegen raus, Dubletten ebenso.
+
+### Einrichten
+
+1. **Schema:** [`supabase/migrations/0003_recipes.sql`](supabase/migrations/0003_recipes.sql)
+   im SQL-Editor ausführen. Legt die Tabelle `recipes` je Haushalt an, mit Row Level Security
+   und Realtime.
+
+2. **API-Key:** In Supabase unter `Edge Functions` → `Secrets` den Eintrag `ANTHROPIC_API_KEY`
+   anlegen (Key aus der [Anthropic Console](https://console.anthropic.com)). Fehlt er, meldet die
+   App das im Klartext statt zu scheitern.
+
+3. **Funktion deployen:** Mit der Supabase CLI
+   `supabase functions deploy generate-recipes --project-ref <ref>`.
+
+### Kosten
+
+Ein Aufruf erzeugt drei Rezepte und kostet grob 3–10 Cent. Wer wöchentlich nachlegt, landet bei
+etwa 15–40 Cent im Monat. Die Abrechnung läuft über dein Anthropic-Konto, nicht über Supabase.
+
+### Bibliothek erweitern
+
+Kommen eigene Rezepte in `src/data/recipes.ts` dazu, gehört ihr Titel auch in die Liste
+`BUILTIN_TITLES` in der Edge Function — sonst kann Claude sie erneut vorschlagen.
+
 ## Konten und Haushalt
 
 Beim ersten Start nach der Registrierung fragt die App, ob ein **neuer Haushalt** angelegt werden
