@@ -178,6 +178,20 @@ interface GeneratedRecipe {
   kidTip: string
 }
 
+/** Technische Fehlermeldungen in etwas übersetzen, das im Rezept-Tab Sinn ergibt. */
+function readableError(detail: string): string {
+  if (detail.includes('credit balance is too low')) {
+    return 'Das Anthropic-Konto hat kein Guthaben mehr. Unter console.anthropic.com → Plans & Billing aufladen.'
+  }
+  if (detail.includes('authentication_error') || detail.includes('invalid x-api-key')) {
+    return 'Der hinterlegte ANTHROPIC_API_KEY wird nicht akzeptiert. Bitte in Supabase prüfen.'
+  }
+  if (detail.includes('rate_limit')) {
+    return 'Gerade zu viele Anfragen bei Anthropic. In ein paar Minuten noch einmal versuchen.'
+  }
+  return `Die Rezept-Erzeugung ist fehlgeschlagen: ${detail}`
+}
+
 /** Prüft, ob ein Rezept brauchbar ist – die KI kann sich irren. */
 function isUsable(r: GeneratedRecipe): boolean {
   return (
@@ -276,20 +290,23 @@ Sorge für Abwechslung gegenüber der bestehenden Liste: andere Hauptzutaten, an
     message = await stream.finalMessage()
   } catch (err) {
     // Ist das Fallback-Beta für die Organisation nicht freigeschaltet,
-    // ohne Fallback weiterversuchen statt das Feature scheitern zu lassen.
+    // ohne Fallback weiterversuchen. Bei allen anderen Fehlern (Guthaben,
+    // Key, Rate Limit) hilft ein zweiter Versuch nicht – dann gleich melden.
+    const detail = err instanceof Error ? err.message : String(err)
     const status = (err as { status?: number })?.status
-    if (status !== 400) {
-      const detail = err instanceof Error ? err.message : String(err)
+    const betaProblem =
+      status === 400 && (detail.includes('fallback') || detail.includes('beta'))
+    if (!betaProblem) {
       console.error('Claude-Aufruf fehlgeschlagen:', detail)
-      return json({ error: `Die Rezept-Erzeugung ist fehlgeschlagen: ${detail}` }, 502)
+      return json({ error: readableError(detail) }, 502)
     }
     try {
       const stream = anthropic.messages.stream(request as never)
       message = await stream.finalMessage()
     } catch (err2) {
-      const detail = err2 instanceof Error ? err2.message : String(err2)
-      console.error('Claude-Aufruf fehlgeschlagen:', detail)
-      return json({ error: `Die Rezept-Erzeugung ist fehlgeschlagen: ${detail}` }, 502)
+      const detail2 = err2 instanceof Error ? err2.message : String(err2)
+      console.error('Claude-Aufruf ohne Fallback fehlgeschlagen:', detail2)
+      return json({ error: readableError(detail2) }, 502)
     }
   }
 
