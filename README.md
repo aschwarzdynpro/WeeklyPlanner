@@ -126,8 +126,12 @@ etwa 15–40 Cent im Monat. Die Abrechnung läuft über dein Anthropic-Konto, ni
 
 ### Bibliothek erweitern
 
-Kommen eigene Rezepte in `src/data/recipes.ts` dazu, gehört ihr Titel auch in die Liste
-`BUILTIN_TITLES` in der Edge Function — sonst kann Claude sie erneut vorschlagen.
+Kommen eigene Rezepte in `src/data/recipes.ts` dazu, gehören ihre Titel auch in die Liste
+`BUILTIN_TITLES` in der Edge Function — sonst kann Claude sie erneut vorschlagen. Neue Zutaten
+gehören entsprechend nach `BUILTIN_INGREDIENTS` (mit Einheit) bzw. `BUILTIN_PANTRY`: Die Funktion
+schickt diese Namen mit und verlangt, dass Claude sie wortgleich übernimmt. Sonst stehen
+„Paprika“ und „Paprika (rot/gelb)“ als zwei Zeilen in der Einkaufsliste, weil nur zusammengezählt
+wird, was gleich heißt. Zutaten aus bereits erzeugten Rezepten kommen automatisch dazu.
 
 ## Konten und Haushalt
 

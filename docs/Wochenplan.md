@@ -33,7 +33,7 @@ nicht von Hand bearbeiten, sondern `npm run plan` neu ausführen.
 - 500 g Magerquark
 - 50 ml Milch
 
-Aus dem Vorrat: Olivenöl, Paprikapulver edelsüß, Salz & Pfeffer
+Aus dem Vorrat: Olivenöl, Paprikapulver edelsüß, Salz, Pfeffer
 
 **Zubereitung**
 
@@ -62,7 +62,7 @@ Aus dem Vorrat: Olivenöl, Paprikapulver edelsüß, Salz & Pfeffer
 - 1 EL Tomatenmark
 - 50 g Parmesan am Stück
 
-Aus dem Vorrat: Oregano getrocknet, Olivenöl, Salz & Pfeffer
+Aus dem Vorrat: Oregano getrocknet, Olivenöl, Salz, Pfeffer
 
 **Zubereitung**
 
@@ -88,7 +88,7 @@ Aus dem Vorrat: Oregano getrocknet, Olivenöl, Salz & Pfeffer
 - 200 g Basmatireis
 - 100 g Crème fraîche
 
-Aus dem Vorrat: Mittelscharfer Senf, Olivenöl, Salz & Pfeffer
+Aus dem Vorrat: Mittelscharfer Senf, Olivenöl, Salz, Pfeffer
 
 **Zubereitung**
 
@@ -116,7 +116,7 @@ Aus dem Vorrat: Mittelscharfer Senf, Olivenöl, Salz & Pfeffer
 - 1 Stück Zitrone
 - 150 g Naturjoghurt
 
-Aus dem Vorrat: Gemüsebrühe (Pulver), Paprikapulver edelsüß, Kreuzkümmel gemahlen, Olivenöl, Salz & Pfeffer
+Aus dem Vorrat: Gemüsebrühe (Pulver), Paprikapulver edelsüß, Kreuzkümmel gemahlen, Olivenöl, Salz, Pfeffer
 
 **Zubereitung**
 
@@ -148,7 +148,7 @@ Aus dem Vorrat: Gemüsebrühe (Pulver), Paprikapulver edelsüß, Kreuzkümmel ge
 - 1 Stück Salatgurke
 - 3 Stück Tomaten
 
-Aus dem Vorrat: Oregano getrocknet, Olivenöl, Essig, Honig, Salz & Pfeffer
+Aus dem Vorrat: Oregano getrocknet, Olivenöl, Essig, Honig, Salz, Pfeffer
 
 **Zubereitung**
 
@@ -181,7 +181,7 @@ Aus dem Vorrat: Oregano getrocknet, Olivenöl, Essig, Honig, Salz & Pfeffer
 - 1 Stück Rote Zwiebel
 - 50 g Semmelbrösel
 
-Aus dem Vorrat: Mayonnaise, Ketchup, Mittelscharfer Senf, Paprikapulver edelsüß, Essig, Honig, Olivenöl, Salz & Pfeffer
+Aus dem Vorrat: Mayonnaise, Ketchup, Mittelscharfer Senf, Paprikapulver edelsüß, Essig, Honig, Olivenöl, Salz, Pfeffer
 
 **Zubereitung**
 
@@ -216,7 +216,7 @@ Aus dem Vorrat: Mayonnaise, Ketchup, Mittelscharfer Senf, Paprikapulver edelsü�
 - 50 g Haferflocken
 - 1 Packung Vanillesauce
 
-Aus dem Vorrat: Zimt, Paprikapulver edelsüß, Olivenöl, Salz & Pfeffer
+Aus dem Vorrat: Zimt, Paprikapulver edelsüß, Olivenöl, Salz, Pfeffer
 
 **Zubereitung**
 
@@ -306,5 +306,5 @@ Zusammengezählt aus allen sieben Gerichten.
 
 **Vorrat prüfen**
 
-Olivenöl, Paprikapulver edelsüß, Salz & Pfeffer, Oregano getrocknet, Mittelscharfer Senf, Gemüsebrühe (Pulver), Kreuzkümmel gemahlen, Essig, Honig, Mayonnaise, Ketchup, Zimt
+Olivenöl, Paprikapulver edelsüß, Salz, Pfeffer, Oregano getrocknet, Mittelscharfer Senf, Gemüsebrühe (Pulver), Kreuzkümmel gemahlen, Essig, Honig, Mayonnaise, Ketchup, Zimt
 

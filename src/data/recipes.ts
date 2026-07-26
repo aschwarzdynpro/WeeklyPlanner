@@ -27,7 +27,8 @@ export const RECIPES: Recipe[] = [
       { name: 'Milch', qty: 50, unit: 'ml', cat: 'Milchprodukte & Eier' },
       { name: 'Olivenöl', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
       { name: 'Paprikapulver edelsüß', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
-      { name: 'Salz & Pfeffer', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
+      { name: 'Salz', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
+      { name: 'Pfeffer', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
     ],
     steps: [
       'Backofen auf 200 °C Umluft vorheizen.',
@@ -60,7 +61,8 @@ export const RECIPES: Recipe[] = [
       { name: 'Parmesan am Stück', qty: 50, unit: 'g', cat: 'Milchprodukte & Eier' },
       { name: 'Oregano getrocknet', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
       { name: 'Olivenöl', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
-      { name: 'Salz & Pfeffer', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
+      { name: 'Salz', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
+      { name: 'Pfeffer', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
     ],
     steps: [
       'Karotten und Sellerie sehr fein raspeln (Küchenmaschine oder Reibe), Zwiebel und Knoblauch fein würfeln.',
@@ -90,7 +92,8 @@ export const RECIPES: Recipe[] = [
       { name: 'Crème fraîche', qty: 100, unit: 'g', cat: 'Milchprodukte & Eier' },
       { name: 'Mittelscharfer Senf', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
       { name: 'Olivenöl', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
-      { name: 'Salz & Pfeffer', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
+      { name: 'Salz', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
+      { name: 'Pfeffer', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
     ],
     steps: [
       'Backofen auf 180 °C Ober-/Unterhitze vorheizen.',
@@ -124,7 +127,8 @@ export const RECIPES: Recipe[] = [
       { name: 'Paprikapulver edelsüß', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
       { name: 'Kreuzkümmel gemahlen', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
       { name: 'Olivenöl', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
-      { name: 'Salz & Pfeffer', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
+      { name: 'Salz', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
+      { name: 'Pfeffer', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
     ],
     steps: [
       'Couscous in eine Schüssel geben, mit 300 ml heißer Gemüsebrühe übergießen, abdecken und 5 Minuten quellen lassen. Danach mit der Gabel auflockern.',
@@ -162,7 +166,8 @@ export const RECIPES: Recipe[] = [
       { name: 'Olivenöl', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
       { name: 'Essig', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
       { name: 'Honig', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
-      { name: 'Salz & Pfeffer', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
+      { name: 'Salz', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
+      { name: 'Pfeffer', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
     ],
     steps: [
       'Beide Mehle mit Trockenhefe, 1 TL Salz, 2 EL Olivenöl und 250 ml lauwarmem Wasser zu einem geschmeidigen Teig kneten (ca. 5 Minuten). Abgedeckt 20–25 Minuten gehen lassen.',
@@ -204,7 +209,8 @@ export const RECIPES: Recipe[] = [
       { name: 'Essig', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
       { name: 'Honig', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
       { name: 'Olivenöl', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
-      { name: 'Salz & Pfeffer', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
+      { name: 'Salz', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
+      { name: 'Pfeffer', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
     ],
     steps: [
       'Backofen auf 200 °C Umluft vorheizen. Kartoffeln waschen, in Spalten schneiden, mit 2 EL Öl, Salz und Paprikapulver mischen und 35 Minuten backen (einmal wenden).',
@@ -244,7 +250,8 @@ export const RECIPES: Recipe[] = [
       { name: 'Zimt', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
       { name: 'Paprikapulver edelsüß', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
       { name: 'Olivenöl', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
-      { name: 'Salz & Pfeffer', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
+      { name: 'Salz', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
+      { name: 'Pfeffer', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
     ],
     steps: [
       'Backofen auf 190 °C Ober-/Unterhitze vorheizen. Hähnchen trocken tupfen, innen und außen salzen, mit 1 EL Öl und 1 TL Paprikapulver einreiben und in einen Bräter oder auf ein tiefes Blech setzen. 60–70 Minuten braten.',
@@ -277,7 +284,8 @@ export const RECIPES: Recipe[] = [
       { name: 'Naan-Brot', qty: 3, unit: 'Stück', cat: 'Backwaren' },
       { name: 'Currypulver mild', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
       { name: 'Gemüsebrühe (Pulver)', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
-      { name: 'Salz & Pfeffer', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
+      { name: 'Salz', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
+      { name: 'Pfeffer', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
     ],
     steps: [
       'Zwiebel würfeln und andünsten, 1 TL mildes Currypulver kurz mitrösten.',
@@ -304,7 +312,8 @@ export const RECIPES: Recipe[] = [
       { name: 'Karotten', qty: 2, unit: 'Stück', cat: 'Obst & Gemüse' },
       { name: 'Apfelmus', qty: 1, unit: 'Glas', cat: 'Trockenwaren & Konserven' },
       { name: 'Butter', qty: 30, unit: 'g', cat: 'Milchprodukte & Eier' },
-      { name: 'Salz & Pfeffer', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
+      { name: 'Salz', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
+      { name: 'Pfeffer', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
     ],
     steps: [
       'Mehl, Milch, Eier und 1 TL Salz zu einem glatten Teig verrühren, 10 Minuten ruhen lassen.',
@@ -335,7 +344,8 @@ export const RECIPES: Recipe[] = [
       { name: 'Semmelbrösel', qty: 50, unit: 'g', cat: 'Trockenwaren & Konserven' },
       { name: 'Mittelscharfer Senf', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
       { name: 'Muskatnuss', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
-      { name: 'Salz & Pfeffer', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
+      { name: 'Salz', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
+      { name: 'Pfeffer', qty: null, unit: '', cat: 'Vorrat & Gewürze', pantry: true },
     ],
     steps: [
       'Backofen auf 200 °C Umluft vorheizen.',

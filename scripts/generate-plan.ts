@@ -73,7 +73,7 @@ w('## Einkaufsliste für die ganze Woche')
 w()
 w('Zusammengezählt aus allen sieben Gerichten.')
 w()
-const list = buildShoppingList(week, SERVINGS)
+const list = buildShoppingList(week, SERVINGS, RECIPE_BY_ID)
 for (const group of groupByCategory(list)) {
   if (group.cat === ('Vorrat & Gewürze' as (typeof CATEGORIES)[number])) continue
   w(`**${group.cat}**`)

@@ -41,6 +41,101 @@ const BUILTIN_TITLES = [
   'Ofen-Frikadellen mit Kartoffelpüree & Erbsen',
 ]
 
+/**
+ * Zutaten-Vokabular der mitgelieferten Rezepte, als "Name | Einheit".
+ *
+ * Die Einkaufsliste zählt nur zusammen, was exakt gleich heißt und dieselbe
+ * Einheit hat. Ohne diese Liste schreibt Claude "Paprika", die Bibliothek
+ * sagt "Paprika (rot/gelb)" – und im Wagen stehen zwei Zeilen für dasselbe
+ * Gemüse. Neu erfundene Zutaten sind erlaubt, bekannte sollen aber die
+ * vorhandene Schreibweise übernehmen.
+ *
+ * Erzeugt aus src/data/recipes.ts; beim Ergänzen der Bibliothek nachziehen.
+ */
+const BUILTIN_INGREDIENTS = [
+  'Äpfel | Stück',
+  'Apfelmus | Glas',
+  'Basmatireis | g',
+  'Brauner Zucker | g',
+  'Brokkoli | g',
+  'Burger-Buns (Vollkorn) | Stück',
+  'Butter | g',
+  'Champignons | g',
+  'Cheddar-Scheiben | Scheiben',
+  'Cherrytomaten | g',
+  'Couscous | g',
+  'Crème fraîche | g',
+  'Dill | Bund',
+  'Dinkelmehl Type 630 | g',
+  'Dinkelvollkornmehl | g',
+  'Eier | Stück',
+  'Erbsen (TK) | g',
+  'Gekochter Schinken | g',
+  'Gemischtes Hackfleisch | g',
+  'Geriebener Käse (Mozzarella/Gouda) | g',
+  'Haferflocken | g',
+  'Hähnchen ganz (ca. 1,4 kg) | Stück',
+  'Hähnchenbrustfilet | g',
+  'Karotten | Stück',
+  'Kartoffeln (festkochend) | g',
+  'Kartoffeln (mehligkochend) | g',
+  'Knoblauchzehe | Stück',
+  'Kokosmilch | ml',
+  'Lachsfilet ohne Haut | g',
+  'Magerquark | g',
+  'Mais (Dose) | Dose',
+  'Milch | ml',
+  'Naan-Brot | Stück',
+  'Naturjoghurt | g',
+  'Paprika (rot/gelb) | Stück',
+  'Parmesan am Stück | g',
+  'Passierte Tomaten | g',
+  'Petersilie | Bund',
+  'Rinderhackfleisch | g',
+  'Romanasalat | Kopf',
+  'Rosmarin | Zweige',
+  'Rote Linsen | g',
+  'Rote Zwiebel | Stück',
+  'Salatblätter | Kopf',
+  'Salatgurke | Stück',
+  'Schnittlauch | Bund',
+  'Semmelbrösel | g',
+  'Staudensellerie | Stange',
+  'Tomaten | Stück',
+  'Tomatenmark | EL',
+  'Trockenhefe | Päckchen',
+  'Vanillesauce | Packung',
+  'Vollkorn-Spaghetti | g',
+  'Weißkohl | g',
+  'Weizenmehl | g',
+  'Zitrone | Stück',
+  'Zucchini | Stück',
+  'Zwiebel | Stück',
+]
+
+/**
+ * Vorratsartikel der Bibliothek. Die stehen ohne Menge unter „Vorrat prüfen“,
+ * doppeln sich aber genauso, wenn Claude „Gemüsebrühe“ statt
+ * „Gemüsebrühe (Pulver)“ schreibt.
+ */
+const BUILTIN_PANTRY = [
+  'Currypulver mild',
+  'Essig',
+  'Gemüsebrühe (Pulver)',
+  'Honig',
+  'Ketchup',
+  'Kreuzkümmel gemahlen',
+  'Mayonnaise',
+  'Mittelscharfer Senf',
+  'Muskatnuss',
+  'Olivenöl',
+  'Oregano getrocknet',
+  'Paprikapulver edelsüß',
+  'Pfeffer',
+  'Salz',
+  'Zimt',
+]
+
 const RECIPE_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -132,7 +227,7 @@ Mengen und Einheiten:
 - Immer für 3 Portionen.
 - Zähle in "Stück", was man einzeln kauft (Paprika, Zwiebeln, Zitronen, Karotten). Wiege in Gramm, was lose verkauft wird (Hackfleisch, Kartoffeln, Nudeln).
 - Salz, Pfeffer, Öl, Essig, Gewürze und Brühe sind Vorratsartikel: pantry auf true, qty auf 0, unit leer.
-- Verwende für gleiche Zutaten immer dieselbe Schreibweise und Einheit, damit die Einkaufsliste sie zusammenzählen kann.
+- Verwende für gleiche Zutaten immer dieselbe Schreibweise und Einheit, damit die Einkaufsliste sie zusammenzählen kann. Steht eine Zutat in der mitgeschickten Liste bekannter Zutaten, übernimm Name und Einheit daraus wortgleich – auch wenn dir eine andere Bezeichnung geläufiger wäre. Nur wirklich neue Zutaten bekommen einen neuen Namen.
 
 Schreibe auf Deutsch, in ganzen Sätzen, ohne Werbesprache.`
 
@@ -247,13 +342,34 @@ Deno.serve(async (req: Request) => {
   // Was es schon gibt, damit sich nichts wiederholt.
   const { data: existing, error: existingError } = await supabase
     .from('recipes')
-    .select('id, title')
+    .select('id, title, ingredients')
     .eq('household_id', household)
   if (existingError) return json({ error: existingError.message }, 400)
 
   const knownTitles = [...BUILTIN_TITLES, ...(existing ?? []).map((r) => r.title)]
   const knownIds = new Set((existing ?? []).map((r) => r.id))
   const knownTitleSet = new Set(knownTitles.map(norm))
+
+  // Zutaten-Vokabular: eingebaute Rezepte plus alles, was schon erzeugt wurde.
+  // So bleibt die Schreibweise auch über viele Runden hinweg einheitlich.
+  const vocabulary = new Map<string, string>()
+  for (const entry of BUILTIN_INGREDIENTS) {
+    const [name, unit] = entry.split(' | ')
+    vocabulary.set(norm(name), `${name} | ${unit ?? ''}`)
+  }
+  const pantryVocabulary = new Map<string, string>()
+  for (const name of BUILTIN_PANTRY) pantryVocabulary.set(norm(name), name)
+  for (const recipe of existing ?? []) {
+    for (const i of (recipe.ingredients ?? []) as { name?: string; unit?: string; pantry?: boolean }[]) {
+      if (!i.name) continue
+      const target = i.pantry ? pantryVocabulary : vocabulary
+      if (target.has(norm(i.name))) continue
+      target.set(norm(i.name), i.pantry ? i.name : `${i.name} | ${i.unit ?? ''}`)
+    }
+  }
+  const byName = (a: string, b: string) => a.localeCompare(b, 'de')
+  const knownIngredients = [...vocabulary.values()].sort(byName)
+  const knownPantry = [...pantryVocabulary.values()].sort(byName)
 
   const anthropic = new Anthropic({ apiKey })
 
@@ -273,7 +389,13 @@ Deno.serve(async (req: Request) => {
 Diese Gerichte gibt es schon – schlage nichts vor, was einem davon ähnelt:
 ${knownTitles.map((t) => `- ${t}`).join('\n')}
 
-Sorge für Abwechslung gegenüber der bestehenden Liste: andere Hauptzutaten, andere Zubereitungsart, andere Küche. Mindestens eines der Gerichte soll vegetarisch sein.`,
+Sorge für Abwechslung gegenüber der bestehenden Liste: andere Hauptzutaten, andere Zubereitungsart, andere Küche. Mindestens eines der Gerichte soll vegetarisch sein.
+
+Diese Zutaten kommen in der Bibliothek bereits vor, jeweils als "Name | Einheit". Verwendest du eine davon, schreibe sie genau so – die Einkaufsliste zählt nur zusammen, was wortgleich ist:
+${knownIngredients.join('\n')}
+
+Und diese Vorratsartikel (pantry) sind schon benannt – auch hier die vorhandene Schreibweise übernehmen:
+${knownPantry.join('\n')}`,
       },
     ],
   }
