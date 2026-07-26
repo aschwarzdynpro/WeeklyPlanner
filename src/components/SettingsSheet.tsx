@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { ATTENDEES, ATTENDEE_LABEL } from '../types'
-import type { Attendee, Settings } from '../types'
+import { PERSON_COLORS } from '../types'
+import type { Person, Settings } from '../types'
+import { uid } from '../lib/week'
 import { signOut, updatePassword } from '../storage/supabase'
 import {
   notificationPermission,
@@ -91,9 +92,37 @@ export function SettingsSheet({
     }
   }
 
-  const changeOnlyFor = (value: Attendee | 'alle') => {
+  const changeOnlyFor = (value: string) => {
     onRemindersChange({ onlyFor: value })
     if (reminders.push) void updatePushAttendee(value)
+  }
+
+  const patchPerson = (id: string, fields: Partial<Person>) => {
+    onChange({ people: settings.people.map((p) => (p.id === id ? { ...p, ...fields } : p)) })
+  }
+
+  const addPerson = () => {
+    const used = new Set(settings.people.map((p) => p.color))
+    const color = PERSON_COLORS.find((c) => !used.has(c)) ?? PERSON_COLORS[0]
+    onChange({
+      people: [
+        ...settings.people,
+        { id: uid(), name: 'Neue Person', emoji: '🙂', color, bedtime: false },
+      ],
+    })
+  }
+
+  const removePerson = (id: string) => {
+    const people = settings.people.filter((p) => p.id !== id)
+    if (people.length === 0) return
+    const patch: Partial<Settings> = { people }
+    // Die Rotation darf nicht bei jemandem beginnen, den es nicht mehr gibt.
+    if (settings.bedtimeStart === id) {
+      patch.bedtimeStart = people.find((p) => p.bedtime)?.id ?? people[0].id
+    }
+    onChange(patch)
+    // Erinnerungen dieses Geräts hingen womöglich an der gelöschten Person.
+    if (reminders.onlyFor === id) changeOnlyFor('alle')
   }
 
   const changePassword = async (e: React.FormEvent) => {
@@ -136,6 +165,68 @@ export function SettingsSheet({
         />
       </label>
 
+      <h3>Familie</h3>
+      <ul className="person-list">
+        {settings.people.map((person) => (
+          <li key={person.id}>
+            <div className="person-row">
+              <input
+                className="person-emoji"
+                value={person.emoji}
+                onChange={(e) => patchPerson(person.id, { emoji: e.target.value.slice(0, 4) })}
+                aria-label={`Zeichen für ${person.name}`}
+              />
+              <input
+                className="person-name"
+                value={person.name}
+                onChange={(e) => patchPerson(person.id, { name: e.target.value })}
+                aria-label="Name"
+              />
+              {settings.people.length > 1 && (
+                <button
+                  className="icon-btn"
+                  onClick={() => removePerson(person.id)}
+                  aria-label={`${person.name} entfernen`}
+                  title="Entfernen"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            <div className="person-row">
+              <div className="color-choice">
+                {PERSON_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    className={person.color === color ? 'color-dot on' : 'color-dot'}
+                    style={{ background: color }}
+                    onClick={() => patchPerson(person.id, { color })}
+                    aria-label={`Farbe für ${person.name}`}
+                    aria-pressed={person.color === color}
+                  />
+                ))}
+              </div>
+              <label className="switch-row person-bedtime">
+                <input
+                  type="checkbox"
+                  checked={person.bedtime}
+                  onChange={(e) => patchPerson(person.id, { bedtime: e.target.checked })}
+                />
+                <span>Bettdienst</span>
+              </label>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <button className="secondary-btn" onClick={addPerson}>
+        + Person
+      </button>
+      <p className="muted small">
+        Diese Namen stehen im Termin zur Auswahl. Wer den Haken bei „Bettdienst“ hat, kommt in die
+        abendliche Rotation — bei zwei Personen wechselt sie täglich, bei dreien reihum. Nimmt
+        niemand teil, verschwindet der Balken aus der Wochenansicht.
+      </p>
+
       <h3>Bettdienst</h3>
       <div className="form-row">
         <label className="form-label">
@@ -156,9 +247,9 @@ export function SettingsSheet({
         </label>
       </div>
       <p className="muted small">
-        Der Dienst wechselt täglich und läuft über Wochengrenzen hinweg weiter. Wer wann dran ist,
-        stellst du im Reiter <strong>Termine</strong> um: einzelne Tage per Tipp auf das
-        Bettdienst-Feld, die gesamte Rotation über „Rotation tauschen“.
+        Der Dienst läuft über Wochengrenzen hinweg weiter. Wer wann dran ist, stellst du im Reiter
+        <strong> Termine</strong> um: einzelne Tage per Tipp auf das Bettdienst-Feld, die gesamte
+        Rotation über „Rotation verschieben“.
       </p>
 
       <h3>Erinnerungen</h3>
@@ -184,12 +275,12 @@ export function SettingsSheet({
                 Welche Termine?
                 <select
                   value={reminders.onlyFor}
-                  onChange={(e) => changeOnlyFor(e.target.value as Attendee | 'alle')}
+                  onChange={(e) => changeOnlyFor(e.target.value)}
                 >
                   <option value="alle">Alle Termine</option>
-                  {ATTENDEES.map((a) => (
-                    <option key={a} value={a}>
-                      Nur Termine mit {ATTENDEE_LABEL[a]}
+                  {settings.people.map((person) => (
+                    <option key={person.id} value={person.id}>
+                      Nur Termine mit {person.name}
                     </option>
                   ))}
                 </select>

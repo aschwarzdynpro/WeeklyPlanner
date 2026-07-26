@@ -9,30 +9,30 @@ schnellsten spürbar wird, nicht nach technischer Eleganz. Jeder Punkt trägt ei
 Datenbank-Migration nötig ist. Nichts davon ist beschlossen — es ist eine Einkaufsliste, aus der
 man sich bedient.
 
-## Phase 1 — Fundament nachziehen
+## Phase 1 — Fundament nachziehen ✅ erledigt
 
-Kleine Dinge, die später viel Arbeit sparen. Zwei davon sind eigentlich Lücken, keine Features.
+Kleine Dinge, die später viel Arbeit sparen. Zwei davon waren eigentlich Lücken, keine Features.
 
-- **App-Manifest und Installation** (S, keine Migration)
-  Es fehlt ein `manifest.webmanifest` mit Name, Farben und Icons. Ohne das ist die App zwar über
-  „Zum Home-Bildschirm hinzufügen" ablegbar, verhält sich aber nicht wie eine installierte App —
-  und genau die braucht es auf dem iPhone, damit Erinnerungen überhaupt ankommen. Der Service
-  Worker liegt schon bereit; hier fehlt nur das Beiblatt.
+- **App-Manifest und Installation** ✅
+  `public/manifest.webmanifest` samt Icons aus `scripts/generate-icons.ts` und den Apple-eigenen
+  Meta-Angaben, die iOS statt des Manifests liest. Der Service Worker beantwortet Anfragen jetzt
+  auch ohne Netz — das verlangt Chrome für die Installierbarkeit, und im Supermarkt ist es
+  ohnehin praktisch.
 
-- **Personen konfigurierbar machen** (M, Migration nur für Push-Abos)
-  Heute stehen `mama`, `papa` und `kind` fest im Code. Ein zweites Kind, die Oma oder ein
-  Wochenendbesuch passen da nicht hinein. Stattdessen: eine Liste von Personen je Haushalt, mit
-  Name, Farbe und Emoji. Das ist Voraussetzung für fast alles Spätere — Aufgabenrotation,
-  Anwesenheiten, Portionen pro Person. Je früher, desto weniger Altlast.
+- **Personen konfigurierbar machen** ✅
+  Die Personen stehen als Liste im `settings`-Dokument, mit Name, Zeichen, Farbe und einem Haken
+  für den Bettdienst. Die Rotation verteilt reihum, egal auf wie viele. Die mitgelieferten drei
+  behalten die ids `mama`, `papa` und `kind` — deshalb war an vorhandenen Daten nichts
+  umzuschreiben, nur `0005_people.sql` lockert die Prüfung an den Push-Abos.
 
-- **Ganztägige und mehrtägige Termine** (S, keine Migration)
-  Urlaub, Kita-Schließtage, „Papa auf Dienstreise" — das sind keine Uhrzeiten, das sind Zeiträume.
-  Aktuell muss man sie als Einzeltermine über mehrere Tage streuen.
+- **Ganztägige und mehrtägige Termine** ✅
+  Als eigener Begriff „Zeitraum" im Dokument `spans`, mit Anzeige über der Woche und in jedem
+  betroffenen Tag. Läuft über Wochengrenzen hinaus, weil er nicht in den Wochendokumenten liegt.
 
-- **Tests für die Rechenlogik** (S, keine Migration)
-  Es gibt keinen Testrunner. Die Bettdienst-Rotation, das Ausklappen der Serien und das
-  Zusammenzählen der Einkaufsliste sind reine Funktionen ohne Oberfläche — genau das, was sich
-  billig absichern lässt und wo ein Fehler unangenehm auffällt.
+- **Tests für die Rechenlogik** ✅
+  Vitest, `npm test`: Kalenderwoche, Bettdienst-Rotation, Serien, Zeiträume, Einkaufsliste und die
+  Migration alter Daten — die reinen Funktionen in `src/lib`. Nicht abgedeckt sind die
+  React-Komponenten; dafür bräuchte es jsdom und eine Testbibliothek.
 
 ## Phase 2 — Alltag
 

@@ -1,21 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DEFAULT_SETTINGS } from '../types'
-import type { EventSeries, Settings, WeekData } from '../types'
+import type { Settings, WeekData } from '../types'
 import {
   addDays,
   fromISODate,
   normalizeSeries,
+  normalizeSettings,
+  normalizeSpans,
   normalizeWeek,
   startOfWeek,
   toISODate,
 } from '../lib/week'
+import { useHouseholdDoc } from './useHouseholdDoc'
 import type { StorageAdapter } from '../storage/types'
 
 export type SyncState = 'lädt' | 'gespeichert' | 'offline'
 
 const SETTINGS_KEY = 'settings'
-/** Serientermine gelten über alle Wochen hinweg – eigenes Dokument. */
-const SERIES_KEY = 'series'
 const weekKey = (weekStart: string) => `week:${weekStart}`
 
 /**
@@ -28,8 +29,13 @@ export function usePlanner(adapter: StorageAdapter, cache: StorageAdapter) {
   const [weekStart, setWeekStart] = useState(() => toISODate(startOfWeek(new Date())))
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   const [week, setWeek] = useState<WeekData | null>(null)
-  const [series, setSeries] = useState<EventSeries[]>([])
   const [sync, setSync] = useState<SyncState>('lädt')
+
+  const offline = useCallback(() => setSync('offline'), [])
+  // Serientermine und Zeiträume gelten über alle Wochen hinweg und liegen
+  // deshalb je in einem eigenen Dokument des Haushalts.
+  const [series, updateSeries] = useHouseholdDoc(adapter, cache, 'series', normalizeSeries, offline)
+  const [spans, updateSpans] = useHouseholdDoc(adapter, cache, 'spans', normalizeSpans, offline)
 
   // Verhindert, dass frisch geladene Daten sofort wieder zurückgeschrieben werden.
   const dirty = useRef(false)
@@ -40,45 +46,19 @@ export function usePlanner(adapter: StorageAdapter, cache: StorageAdapter) {
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      let stored: Settings | null = null
+      let stored: unknown = null
       try {
         stored = await adapter.load<Settings>(SETTINGS_KEY)
       } catch (err) {
         console.warn('Einstellungen konnten nicht geladen werden:', err)
       }
       stored ??= await cache.load<Settings>(SETTINGS_KEY)
-      if (!cancelled && stored) setSettings({ ...DEFAULT_SETTINGS, ...stored })
+      if (!cancelled && stored) setSettings(normalizeSettings(stored))
     })()
     return () => {
       cancelled = true
     }
   }, [adapter, cache])
-
-  // --- Serientermine laden ---------------------------------------------------
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      let stored: unknown = null
-      try {
-        stored = await adapter.load<EventSeries[]>(SERIES_KEY)
-      } catch (err) {
-        console.warn('Serientermine konnten nicht geladen werden:', err)
-      }
-      stored ??= await cache.load<EventSeries[]>(SERIES_KEY)
-      if (!cancelled) setSeries(normalizeSeries(stored))
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [adapter, cache])
-
-  // Änderungen an den Serien vom anderen Gerät übernehmen.
-  useEffect(() => {
-    if (!adapter.subscribe) return
-    return adapter.subscribe<EventSeries[]>(SERIES_KEY, (incoming) => {
-      setSeries(normalizeSeries(incoming))
-    })
-  }, [adapter])
 
   // --- Woche laden -----------------------------------------------------------
   useEffect(() => {
@@ -156,25 +136,6 @@ export function usePlanner(adapter: StorageAdapter, cache: StorageAdapter) {
     [adapter, cache],
   )
 
-  /**
-   * Serien werden sofort geschrieben, nicht entprellt: sie ändern sich
-   * selten, dafür wirkt eine Änderung auf jede Woche.
-   */
-  const updateSeries = useCallback(
-    (mutate: (current: EventSeries[]) => EventSeries[]) => {
-      setSeries((current) => {
-        const next = mutate(current)
-        void cache.save(SERIES_KEY, next)
-        void adapter.save(SERIES_KEY, next).catch((err) => {
-          console.warn('Serientermine konnten nicht gespeichert werden:', err)
-          setSync('offline')
-        })
-        return next
-      })
-    },
-    [adapter, cache],
-  )
-
   const goToWeek = useCallback((offset: number) => {
     setWeekStart((current) => toISODate(addDays(fromISODate(current), offset * 7)))
   }, [])
@@ -188,10 +149,12 @@ export function usePlanner(adapter: StorageAdapter, cache: StorageAdapter) {
       weekStart,
       week,
       series,
+      spans,
       settings,
       sync,
       updateWeek,
       updateSeries,
+      updateSpans,
       updateSettings,
       goToWeek,
       goToToday,
@@ -200,10 +163,12 @@ export function usePlanner(adapter: StorageAdapter, cache: StorageAdapter) {
       weekStart,
       week,
       series,
+      spans,
       settings,
       sync,
       updateWeek,
       updateSeries,
+      updateSpans,
       updateSettings,
       goToWeek,
       goToToday,

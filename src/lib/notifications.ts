@@ -1,5 +1,3 @@
-import type { Attendee } from '../types'
-
 /**
  * Erinnerungen sind Sache des einzelnen Geräts: Ob das Tablet in der Küche
  * abends klingelt, geht das Handy nichts an. Deshalb liegen die
@@ -8,8 +6,8 @@ import type { Attendee } from '../types'
 export interface ReminderPrefs {
   /** Erinnerungen auf diesem Gerät anzeigen. */
   enabled: boolean
-  /** Nur Termine mit dieser Person; 'alle' zeigt jeden Termin. */
-  onlyFor: Attendee | 'alle'
+  /** Personen-id: nur Termine mit dieser Person. 'alle' zeigt jeden Termin. */
+  onlyFor: string
   /** Zusätzlich per Push, also auch bei geschlossener App. */
   push: boolean
 }

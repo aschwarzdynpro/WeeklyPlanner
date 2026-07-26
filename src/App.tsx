@@ -113,10 +113,12 @@ function Planner({ session, householdId }: { session: Session; householdId: stri
     weekStart,
     week,
     series,
+    spans,
     settings,
     sync,
     updateWeek,
     updateSeries,
+    updateSpans,
     updateSettings,
     goToWeek,
     goToToday,
@@ -131,11 +133,11 @@ function Planner({ session, householdId }: { session: Session; householdId: stri
     })
   }, [])
 
-  // Der Service Worker zeigt die Erinnerungen an – früh registrieren, damit
-  // er bereitsteht, wenn die erste fällig wird.
+  // Der Service Worker hält die App ohne Netz startklar und zeigt die
+  // Erinnerungen an – deshalb immer registrieren, nicht erst bei Bedarf.
   useEffect(() => {
-    if (reminders.enabled) void serviceWorkerRegistration()
-  }, [reminders.enabled])
+    void serviceWorkerRegistration()
+  }, [])
 
   useReminders(adapter, cache, series, settings, reminders)
 
@@ -218,9 +220,11 @@ function Planner({ session, householdId }: { session: Session; householdId: stri
           <Schedule
             week={week}
             series={series}
+            spans={spans}
             settings={settings}
             onChange={updateWeek}
             onSeriesChange={updateSeries}
+            onSpansChange={updateSpans}
             onSettingsChange={updateSettings}
           />
         ) : (

@@ -1,21 +1,18 @@
 import { useState } from 'react'
 import {
-  ATTENDEES,
-  ATTENDEE_EMOJI,
-  ATTENDEE_LABEL,
   DAYS,
-  PARENT_EMOJI,
-  PARENT_LABEL,
   REMINDER_CHOICES,
   REPEAT_CHOICES,
+  SPAN_PRESETS,
   attendeeLabel,
+  bedtimeRotation,
 } from '../types'
 import type {
-  Attendee,
   CalendarEvent,
   DayKey,
   EventSeries,
-  Parent,
+  EventSpan,
+  Person,
   Settings,
   WeekData,
 } from '../types'
@@ -28,15 +25,72 @@ import {
   uid,
 } from '../lib/week'
 import { eventsForWeek, occurrenceDate } from '../lib/series'
+import { formatSpanRange, spanCoversDay, spansForWeek } from '../lib/spans'
 import { Modal } from './Modal'
 
 interface Props {
   week: WeekData
   series: EventSeries[]
+  spans: EventSpan[]
   settings: Settings
   onChange: (mutate: (draft: WeekData) => WeekData) => void
   onSeriesChange: (mutate: (current: EventSeries[]) => EventSeries[]) => void
+  onSpansChange: (mutate: (current: EventSpan[]) => EventSpan[]) => void
   onSettingsChange: (patch: Partial<Settings>) => void
+}
+
+/** Zeitraum im Formular; `id` fehlt, solange er neu ist. */
+interface SpanDraft {
+  id?: string
+  title: string
+  emoji: string
+  from: string
+  until: string
+  who: string[]
+  note: string
+}
+
+/** Farbe eines Zeitraums: die der ersten beteiligten Person, sonst neutral. */
+function spanColor(span: EventSpan, people: Person[]): string {
+  return people.find((p) => span.who.includes(p.id))?.color ?? '#8a8079'
+}
+
+/** Die Teilnehmerauswahl steht im Termin- wie im Zeitraum-Formular. */
+function AttendeePicker({
+  people,
+  who,
+  onToggle,
+}: {
+  people: Person[]
+  who: string[]
+  onToggle: (id: string) => void
+}) {
+  return (
+    <fieldset className="choice-group">
+      <legend>Wer ist dabei?</legend>
+      <div className="chip-choice">
+        {people.map((person) => (
+          <label
+            key={person.id}
+            className={who.includes(person.id) ? 'chip-toggle on' : 'chip-toggle'}
+            style={
+              who.includes(person.id)
+                ? { borderColor: person.color, background: `${person.color}26` }
+                : undefined
+            }
+          >
+            <input
+              type="checkbox"
+              checked={who.includes(person.id)}
+              onChange={() => onToggle(person.id)}
+            />
+            {person.emoji} {person.name}
+          </label>
+        ))}
+      </div>
+      <p className="muted small">Nichts ausgewählt heißt: alle sind dabei.</p>
+    </fieldset>
+  )
 }
 
 interface Draft {
@@ -50,7 +104,7 @@ interface Draft {
   start: string
   end: string
   title: string
-  who: Attendee[]
+  who: string[]
   location: string
   note: string
   remindMinutes: number
@@ -100,14 +154,19 @@ function draftFromEvent(event: CalendarEvent, series: EventSeries[]): Draft {
 export function Schedule({
   week,
   series,
+  spans,
   settings,
   onChange,
   onSeriesChange,
+  onSpansChange,
   onSettingsChange,
 }: Props) {
   const [draft, setDraft] = useState<Draft | null>(null)
+  const [spanDraft, setSpanDraft] = useState<SpanDraft | null>(null)
   const [showSeries, setShowSeries] = useState(false)
   const today = toISODate(new Date())
+  const people = settings.people
+  const rotation = bedtimeRotation(people)
 
   const patch = (fields: Partial<Draft>) => setDraft((d) => (d ? { ...d, ...fields } : d))
 
@@ -199,77 +258,166 @@ export function Schedule({
     setDraft(null)
   }
 
-  const toggleAttendee = (who: Attendee) =>
+  // --- Zeiträume -------------------------------------------------------------
+
+  const saveSpan = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!spanDraft || !spanDraft.title.trim()) return
+    const span: EventSpan = {
+      id: spanDraft.id ?? uid(),
+      title: spanDraft.title.trim(),
+      emoji: spanDraft.emoji.trim() || '🏖️',
+      // Wer das Ende vor den Anfang legt, meint offensichtlich den Tag selbst.
+      from: spanDraft.from <= spanDraft.until ? spanDraft.from : spanDraft.until,
+      until: spanDraft.from <= spanDraft.until ? spanDraft.until : spanDraft.from,
+      who: spanDraft.who,
+      note: spanDraft.note.trim() || undefined,
+    }
+    onSpansChange((all) =>
+      spanDraft.id ? all.map((x) => (x.id === spanDraft.id ? span : x)) : [...all, span],
+    )
+    setSpanDraft(null)
+  }
+
+  const deleteSpan = () => {
+    if (spanDraft?.id) onSpansChange((all) => all.filter((x) => x.id !== spanDraft.id))
+    setSpanDraft(null)
+  }
+
+  const toggleSpanAttendee = (who: string) =>
+    setSpanDraft((d) =>
+      d
+        ? { ...d, who: d.who.includes(who) ? d.who.filter((x) => x !== who) : [...d.who, who] }
+        : d,
+    )
+
+  const toggleAttendee = (who: string) =>
     setDraft((d) =>
       d
         ? { ...d, who: d.who.includes(who) ? d.who.filter((x) => x !== who) : [...d.who, who] }
         : d,
     )
 
-  const toggleBedtime = (day: DayKey) => {
-    onChange((week_) => ({
-      ...week_,
-      bedtime: { ...week_.bedtime, [day]: week_.bedtime[day] === 'mama' ? 'papa' : 'mama' },
-    }))
+  /** Ein Tipp auf das Feld reicht den Dienst an die nächste Person weiter. */
+  const nextOnDuty = (day: DayKey) => {
+    if (rotation.length === 0) return
+    onChange((week_) => {
+      const current = rotation.findIndex((p) => p.id === week_.bedtime[day])
+      const next = rotation[(current + 1) % rotation.length]
+      return { ...week_, bedtime: { ...week_.bedtime, [day]: next.id } }
+    })
   }
 
   const resetBedtime = () => {
     onChange((week_) => ({
       ...week_,
-      bedtime: defaultBedtime(week_.weekStart, settings.bedtimeStart),
+      bedtime: defaultBedtime(week_.weekStart, settings.bedtimeStart, settings.people),
     }))
   }
 
   /**
-   * Dreht die gesamte Rotation um – dauerhaft, also auch für alle
-   * kommenden Wochen. Der tägliche Wechsel bleibt dabei erhalten.
+   * Verschiebt die Rotation um eine Person – dauerhaft, also auch für alle
+   * kommenden Wochen. Der tägliche Wechsel bleibt dabei erhalten. Bei zwei
+   * Personen ist das genau der Tausch von vorher.
    */
-  const swapRotation = () => {
-    const flipped: Parent = settings.bedtimeStart === 'mama' ? 'papa' : 'mama'
-    onSettingsChange({ bedtimeStart: flipped })
-    onChange((week_) => ({ ...week_, bedtime: defaultBedtime(week_.weekStart, flipped) }))
+  const advanceRotation = () => {
+    if (rotation.length === 0) return
+    const current = rotation.findIndex((p) => p.id === settings.bedtimeStart)
+    const next = rotation[(current + 1) % rotation.length].id
+    onSettingsChange({ bedtimeStart: next })
+    onChange((week_) => ({
+      ...week_,
+      bedtime: defaultBedtime(week_.weekStart, next, settings.people),
+    }))
   }
 
-  const counts = DAYS.reduce(
-    (acc, d) => {
-      acc[week.bedtime[d.key]] += 1
-      return acc
-    },
-    { mama: 0, papa: 0 },
-  )
+  const counts = rotation.map((person) => ({
+    person,
+    days: DAYS.filter((d) => week.bedtime[d.key] === person.id).length,
+  }))
 
   const allEvents = eventsForWeek(week.events, series, week.weekStart)
+  const weekSpans = spansForWeek(spans, week.weekStart)
   /** Bei „nur dieser Termin“ ist die Wiederholung selbst nicht änderbar. */
   const editsSeries = Boolean(draft?.seriesId) && draft?.scope === 'all'
 
   return (
     <section>
-      <div className="list-toolbar">
-        <span className="muted">
-          🌙 Bettdienst {settings.bedtimeFrom}–{settings.bedtimeTo} · Mama {counts.mama}× · Papa{' '}
-          {counts.papa}×
-        </span>
-        <div className="toolbar-actions">
-          <button className="link-btn" onClick={swapRotation}>
-            Rotation tauschen
+      {rotation.length > 0 && (
+        <>
+          <div className="list-toolbar">
+            <span className="muted">
+              🌙 Bettdienst {settings.bedtimeFrom}–{settings.bedtimeTo}
+              {counts.map((c) => ` · ${c.person.name} ${c.days}×`)}
+            </span>
+            <div className="toolbar-actions">
+              {rotation.length > 1 && (
+                <button className="link-btn" onClick={advanceRotation}>
+                  Rotation verschieben
+                </button>
+              )}
+              <button className="link-btn" onClick={resetBedtime}>
+                Woche zurücksetzen
+              </button>
+            </div>
+          </div>
+          <p className="muted small rotation-hint">
+            Der Dienst wechselt täglich und läuft über das Wochenende hinweg weiter – so kommen
+            {rotation.length === 2 ? ' beide über zwei Wochen ' : ` alle über ${rotation.length} Wochen `}
+            auf gleich viele Abende. Einzelne Tage lassen sich per Tipp auf das Feld weiterreichen.
+          </p>
+        </>
+      )}
+
+      <div className="span-bar">
+        {weekSpans.map((span) => (
+          <button
+            key={span.id}
+            className="span-chip"
+            style={{ borderColor: `${spanColor(span, people)}66` }}
+            onClick={() =>
+              setSpanDraft({
+                id: span.id,
+                title: span.title,
+                emoji: span.emoji,
+                from: span.from,
+                until: span.until,
+                who: span.who,
+                note: span.note ?? '',
+              })
+            }
+          >
+            <span aria-hidden="true">{span.emoji}</span>
+            <strong>{span.title}</strong>
+            <span className="span-range">
+              {formatSpanRange(span)}
+              {span.who.length > 0 && ` · ${attendeeLabel(span.who, people)}`}
+            </span>
           </button>
-          <button className="link-btn" onClick={resetBedtime}>
-            Woche zurücksetzen
-          </button>
-        </div>
+        ))}
+        <button
+          className="link-btn"
+          onClick={() =>
+            setSpanDraft({
+              title: '',
+              emoji: '🏖️',
+              from: toISODate(dateForDay(week.weekStart, 'mo')),
+              until: toISODate(dateForDay(week.weekStart, 'so')),
+              who: [],
+              note: '',
+            })
+          }
+        >
+          + Zeitraum
+        </button>
       </div>
-      <p className="muted small rotation-hint">
-        Der Dienst wechselt täglich und läuft über das Wochenende hinweg weiter – so kommen beide
-        über zwei Wochen auf gleich viele Abende. Einzelne Tage lassen sich per Tipp auf das Feld
-        tauschen.
-      </p>
 
       <div className="day-grid">
         {DAYS.map((day) => {
           const date = dateForDay(week.weekStart, day.key)
           const isToday = toISODate(date) === today
           const events = allEvents.filter((e) => e.day === day.key)
-          const parent = week.bedtime[day.key]
+          const onDuty = rotation.find((p) => p.id === week.bedtime[day.key])
           const weekend = day.key === 'sa' || day.key === 'so'
 
           return (
@@ -281,6 +429,17 @@ export function Schedule({
                 <span className="day-name">{day.long}</span>
                 <span className="day-date">{formatDayDate(date)}</span>
               </header>
+
+              {weekSpans
+                .filter((span) => spanCoversDay(span, toISODate(date)))
+                .map((span) => (
+                  <div key={span.id} className="day-span">
+                    <span aria-hidden="true">{span.emoji}</span> {span.title}
+                    {span.who.length > 0 && (
+                      <span className="muted"> · {attendeeLabel(span.who, people)}</span>
+                    )}
+                  </div>
+                ))}
 
               <ul className="event-list">
                 {events.map((event) => (
@@ -310,7 +469,7 @@ export function Schedule({
                           <span className="event-place">📍 {event.location}</span>
                         )}
                         <span className="event-meta">
-                          {attendeeLabel(event.who)}
+                          {attendeeLabel(event.who, people)}
                           {event.note ? ` · ${event.note}` : ''}
                         </span>
                       </span>
@@ -320,18 +479,21 @@ export function Schedule({
                 {events.length === 0 && <li className="no-events">Keine Termine</li>}
               </ul>
 
-              <button
-                className={`bedtime bedtime-${parent}`}
-                onClick={() => toggleBedtime(day.key)}
-                title="Tippen, um zwischen Mama und Papa zu wechseln"
-              >
-                <span className="event-time">
-                  {settings.bedtimeFrom}–{settings.bedtimeTo}
-                </span>
-                <span className="bedtime-body">
-                  🌙 Bettdienst: {PARENT_EMOJI[parent]} <strong>{PARENT_LABEL[parent]}</strong>
-                </span>
-              </button>
+              {onDuty && (
+                <button
+                  className="bedtime"
+                  style={{ borderColor: onDuty.color, background: `${onDuty.color}26` }}
+                  onClick={() => nextOnDuty(day.key)}
+                  title="Tippen, um den Dienst weiterzureichen"
+                >
+                  <span className="event-time">
+                    {settings.bedtimeFrom}–{settings.bedtimeTo}
+                  </span>
+                  <span className="bedtime-body">
+                    🌙 Bettdienst: {onDuty.emoji} <strong>{onDuty.name}</strong>
+                  </span>
+                </button>
+              )}
 
               <button className="link-btn add-event" onClick={() => setDraft(emptyDraft(day.key))}>
                 + Termin
@@ -466,25 +628,7 @@ export function Schedule({
               </label>
             </div>
 
-            <fieldset className="choice-group">
-              <legend>Wer ist dabei?</legend>
-              <div className="chip-choice">
-                {ATTENDEES.map((a) => (
-                  <label
-                    key={a}
-                    className={draft.who.includes(a) ? 'chip-toggle on' : 'chip-toggle'}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={draft.who.includes(a)}
-                      onChange={() => toggleAttendee(a)}
-                    />
-                    {ATTENDEE_EMOJI[a]} {ATTENDEE_LABEL[a]}
-                  </label>
-                ))}
-              </div>
-              <p className="muted small">Nichts ausgewählt heißt: alle sind dabei.</p>
-            </fieldset>
+            <AttendeePicker people={people} who={draft.who} onToggle={toggleAttendee} />
 
             {draft.scope === 'all' && (
               <label>
@@ -543,6 +687,107 @@ export function Schedule({
                 placeholder="Turnbeutel einpacken"
               />
             </label>
+
+            <button className="primary-btn" type="submit">
+              Speichern
+            </button>
+          </form>
+        </Modal>
+      )}
+
+      {spanDraft && (
+        <Modal
+          title={spanDraft.id ? 'Zeitraum bearbeiten' : 'Neuer Zeitraum'}
+          onClose={() => setSpanDraft(null)}
+          footer={
+            spanDraft.id ? (
+              <button className="danger-btn" onClick={deleteSpan}>
+                Löschen
+              </button>
+            ) : undefined
+          }
+        >
+          <form className="form" onSubmit={saveSpan}>
+            <div className="chip-choice">
+              {SPAN_PRESETS.map((preset) => (
+                <button
+                  key={preset.title}
+                  type="button"
+                  className="chip-toggle"
+                  onClick={() =>
+                    setSpanDraft((d) =>
+                      d ? { ...d, emoji: preset.emoji, title: preset.title } : d,
+                    )
+                  }
+                >
+                  {preset.emoji} {preset.title}
+                </button>
+              ))}
+            </div>
+
+            <div className="form-row">
+              <label className="span-emoji-field">
+                Zeichen
+                <input
+                  value={spanDraft.emoji}
+                  onChange={(e) =>
+                    setSpanDraft((d) => (d ? { ...d, emoji: e.target.value.slice(0, 4) } : d))
+                  }
+                />
+              </label>
+              <label>
+                Was?
+                <input
+                  autoFocus
+                  value={spanDraft.title}
+                  onChange={(e) => setSpanDraft((d) => (d ? { ...d, title: e.target.value } : d))}
+                  placeholder="z. B. Urlaub, Kita zu"
+                  required
+                />
+              </label>
+            </div>
+
+            <div className="form-row">
+              <label>
+                Von
+                <input
+                  type="date"
+                  value={spanDraft.from}
+                  onChange={(e) => setSpanDraft((d) => (d ? { ...d, from: e.target.value } : d))}
+                  required
+                />
+              </label>
+              <label>
+                Bis
+                <input
+                  type="date"
+                  value={spanDraft.until}
+                  min={spanDraft.from}
+                  onChange={(e) => setSpanDraft((d) => (d ? { ...d, until: e.target.value } : d))}
+                  required
+                />
+              </label>
+            </div>
+
+            <AttendeePicker
+              people={people}
+              who={spanDraft.who}
+              onToggle={toggleSpanAttendee}
+            />
+
+            <label>
+              Notiz (optional)
+              <input
+                value={spanDraft.note}
+                onChange={(e) => setSpanDraft((d) => (d ? { ...d, note: e.target.value } : d))}
+                placeholder="Schlüssel bei den Nachbarn"
+              />
+            </label>
+
+            <p className="muted small">
+              Zeiträume haben keine Uhrzeit und dürfen über Wochen hinausgehen — sie erscheinen in
+              jeder Woche, die sie berühren.
+            </p>
 
             <button className="primary-btn" type="submit">
               Speichern

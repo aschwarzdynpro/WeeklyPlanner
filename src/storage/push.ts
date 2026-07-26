@@ -1,4 +1,3 @@
-import type { Attendee } from '../types'
 import { serviceWorkerRegistration } from '../lib/notifications'
 import { getSupabase } from './supabase'
 
@@ -34,7 +33,7 @@ export async function currentPushSubscription(): Promise<PushSubscription | null
 }
 
 /** Meldet dieses Gerät für Push an und hinterlegt das Abo im Haushalt. */
-export async function enablePush(householdId: string, onlyFor: Attendee | 'alle'): Promise<void> {
+export async function enablePush(householdId: string, onlyFor: string): Promise<void> {
   if (!VAPID_PUBLIC_KEY) {
     throw new Error('Für Push fehlt der öffentliche VAPID-Schlüssel (VITE_VAPID_PUBLIC_KEY).')
   }
@@ -87,7 +86,7 @@ export async function disablePush(): Promise<void> {
 }
 
 /** Ändert, für wen dieses Gerät Erinnerungen bekommt. */
-export async function updatePushAttendee(onlyFor: Attendee | 'alle'): Promise<void> {
+export async function updatePushAttendee(onlyFor: string): Promise<void> {
   const subscription = await currentPushSubscription()
   const sb = getSupabase()
   if (!subscription || !sb) return

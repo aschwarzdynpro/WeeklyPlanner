@@ -9,6 +9,18 @@
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%97%93%EF%B8%8F%3C/text%3E%3C/svg%3E"
     />
     <meta name="description" content="Familien-Wochenplan: Essensplan, Rezepte, Einkaufsliste und Termine mit Bettdienst" />
+
+    <!-- Als App auf dem Startbildschirm: Manifest für Android und Desktop … -->
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <!-- … und die Apple-eigenen Angaben, die iOS statt des Manifests liest.
+         Ohne sie startet die Seite dort im Safari-Rahmen — und genau das
+         verhindert, dass Erinnerungen angezeigt werden dürfen. -->
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Wochenplan" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
     <title>Familien-Wochenplan</title>
   </head>
   <body>

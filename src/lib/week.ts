@@ -1,10 +1,10 @@
-import { ATTENDEES, DAYS, DEFAULT_SETTINGS } from '../types'
+import { DAYS, DEFAULT_PEOPLE, DEFAULT_SETTINGS, PERSON_COLORS, bedtimeRotation } from '../types'
 import type {
-  Attendee,
   CalendarEvent,
   DayKey,
   EventSeries,
-  Parent,
+  EventSpan,
+  Person,
   Settings,
   WeekData,
 } from '../types'
@@ -77,15 +77,37 @@ export function formatRange(weekStart: string): string {
  */
 const ANCHOR_MONDAY = new Date(2024, 0, 1) // Montag, 01.01.2024
 
-export function defaultBedtime(weekStart: string, start: Parent): Record<DayKey, Parent> {
+/**
+ * Verteilt den Bettdienst auf die Woche: reihum, einen Tag je Person, und
+ * über Wochengrenzen hinweg weiterlaufend. Bei zwei Personen kommen beide
+ * über zwei Wochen auf gleich viele Abende, bei dreien über drei Wochen.
+ *
+ * Nimmt niemand teil, bleibt der Dienst leer – dann zeigt die Woche gar
+ * keinen Balken an.
+ */
+export function defaultBedtime(
+  weekStart: string,
+  start: string,
+  people: Person[] = DEFAULT_PEOPLE,
+): Record<DayKey, string> {
+  const result = {} as Record<DayKey, string>
+  const rotation = bedtimeRotation(people).map((p) => p.id)
+  if (rotation.length === 0) {
+    DAYS.forEach((d) => {
+      result[d.key] = ''
+    })
+    return result
+  }
+
   const daysSinceAnchor = Math.round(
     (fromISODate(weekStart).getTime() - ANCHOR_MONDAY.getTime()) / (24 * 3600 * 1000),
   )
-  const offset = ((daysSinceAnchor % 2) + 2) % 2
-  const order: Parent[] = start === 'mama' ? ['mama', 'papa'] : ['papa', 'mama']
-  const result = {} as Record<DayKey, Parent>
+  const size = rotation.length
+  const offset = ((daysSinceAnchor % size) + size) % size
+  // Wer gestrichen wurde, kann die Rotation nicht mehr anführen.
+  const first = Math.max(0, rotation.indexOf(start))
   DAYS.forEach((d, i) => {
-    result[d.key] = order[(i + offset) % 2]
+    result[d.key] = rotation[(first + offset + i) % size]
   })
   return result
 }
@@ -99,7 +121,7 @@ export function emptyWeek(weekStart: string, settings: Settings = DEFAULT_SETTIN
     weekStart,
     meals,
     events: [],
-    bedtime: defaultBedtime(weekStart, settings.bedtimeStart),
+    bedtime: defaultBedtime(weekStart, settings.bedtimeStart, settings.people),
     shopping: [],
     updatedAt: new Date().toISOString(),
   }
@@ -119,13 +141,57 @@ const isISODate = (value: unknown): value is string =>
   typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
 
 /**
- * Teilnehmer einlesen. Bis Version 1 stand hier ein einzelner Wert, wobei
- * "alle" für den ganzen Haushalt stand – das ist heute die leere Liste.
+ * Teilnehmer einlesen. In der ersten Fassung stand hier ein einzelner Wert,
+ * wobei "alle" für den ganzen Haushalt stand – das ist heute die leere Liste.
+ *
+ * Unbekannte Personen-ids bleiben absichtlich stehen: Wer eine Person aus
+ * Versehen löscht und neu anlegt, findet seine Termine wieder.
  */
-function normalizeAttendees(raw: unknown): Attendee[] {
-  if (Array.isArray(raw)) return ATTENDEES.filter((a) => raw.includes(a))
-  if (typeof raw === 'string' && (ATTENDEES as string[]).includes(raw)) return [raw as Attendee]
-  return []
+function normalizeAttendees(raw: unknown): string[] {
+  const ids = Array.isArray(raw) ? raw : typeof raw === 'string' && raw !== 'alle' ? [raw] : []
+  return [...new Set(ids.filter((id): id is string => typeof id === 'string' && id.length > 0))]
+}
+
+/** Personenliste aus dem Speicher – defensiv, sie kommt aus der Datenbank. */
+export function normalizePeople(raw: unknown): Person[] {
+  if (!Array.isArray(raw)) return DEFAULT_PEOPLE
+  const people = raw.flatMap((entry, index) => {
+    if (!entry || typeof entry !== 'object') return []
+    const data = entry as Record<string, unknown>
+    const id = text(data.id)
+    if (!id) return []
+    return [
+      {
+        id,
+        name: text(data.name) ?? id,
+        emoji: text(data.emoji) ?? '🙂',
+        color: text(data.color) ?? PERSON_COLORS[index % PERSON_COLORS.length],
+        bedtime: data.bedtime === true,
+      },
+    ]
+  })
+  // Doppelte ids würden Termine mehrfach zuordnen; die erste gewinnt.
+  const seen = new Set<string>()
+  const unique = people.filter((p) => !seen.has(p.id) && seen.add(p.id))
+  return unique.length > 0 ? unique : DEFAULT_PEOPLE
+}
+
+/** Einstellungen samt Personen einlesen und fehlende Felder ergänzen. */
+export function normalizeSettings(raw: unknown): Settings {
+  if (!raw || typeof raw !== 'object') return DEFAULT_SETTINGS
+  const data = raw as Partial<Settings>
+  const people = normalizePeople(data.people)
+  const servings = Number(data.servings)
+  return {
+    servings: Number.isFinite(servings) && servings > 0 ? Math.round(servings) : DEFAULT_SETTINGS.servings,
+    people,
+    bedtimeStart:
+      typeof data.bedtimeStart === 'string' && people.some((p) => p.id === data.bedtimeStart)
+        ? data.bedtimeStart
+        : (bedtimeRotation(people)[0]?.id ?? people[0].id),
+    bedtimeFrom: isTime(data.bedtimeFrom) ? data.bedtimeFrom : DEFAULT_SETTINGS.bedtimeFrom,
+    bedtimeTo: isTime(data.bedtimeTo) ? data.bedtimeTo : DEFAULT_SETTINGS.bedtimeTo,
+  }
 }
 
 function normalizeMinutes(raw: unknown): number | undefined {
@@ -178,6 +244,28 @@ export function normalizeSeries(raw: unknown): EventSeries[] {
   })
 }
 
+export function normalizeSpans(raw: unknown): EventSpan[] {
+  if (!Array.isArray(raw)) return []
+  return raw.flatMap((entry) => {
+    if (!entry || typeof entry !== 'object') return []
+    const data = entry as Record<string, unknown>
+    const id = text(data.id)
+    if (!id || !isISODate(data.from) || !isISODate(data.until)) return []
+    return [
+      {
+        id,
+        title: text(data.title) ?? 'Zeitraum',
+        emoji: text(data.emoji) ?? '🏖️',
+        // Verdrehte Angaben geraderücken, statt den Eintrag zu verlieren.
+        from: data.from <= data.until ? data.from : data.until,
+        until: data.from <= data.until ? data.until : data.from,
+        who: normalizeAttendees(data.who),
+        note: text(data.note),
+      },
+    ]
+  })
+}
+
 /** Fehlende Felder ergänzen – schützt vor alten/kaputten gespeicherten Daten. */
 export function normalizeWeek(raw: unknown, weekStart: string, settings: Settings): WeekData {
   const base = emptyWeek(weekStart, settings)
@@ -188,10 +276,14 @@ export function normalizeWeek(raw: unknown, weekStart: string, settings: Setting
     const slot = data.meals?.[d.key]
     if (slot && typeof slot === 'object') meals[d.key] = slot
   })
+  // Gespeicherte Bettdienste nur übernehmen, solange es die Person noch gibt –
+  // sonst stünde nach dem Löschen ein leeres Feld in der Woche.
   const bedtime = { ...base.bedtime }
   DAYS.forEach((d) => {
     const p = data.bedtime?.[d.key]
-    if (p === 'mama' || p === 'papa') bedtime[d.key] = p
+    if (typeof p === 'string' && settings.people.some((person) => person.id === p)) {
+      bedtime[d.key] = p
+    }
   })
   return {
     weekStart,

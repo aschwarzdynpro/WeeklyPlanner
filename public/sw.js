@@ -1,7 +1,7 @@
 /*
  * Service Worker des Familien-Wochenplans.
  *
- * Er hat zwei Aufgaben:
+ * Er hat drei Aufgaben:
  *  1. Erinnerungen anzeigen, während die App auf dem Gerät läuft. Die App
  *     schickt sie über `registration.showNotification()` – nötig, weil
  *     Android und installierte iOS-Apps Benachrichtigungen nur aus einem
@@ -9,18 +9,69 @@
  *  2. Echte Push-Nachrichten entgegennehmen, die die Edge Function
  *     "send-reminders" verschickt – die kommen auch an, wenn die App
  *     geschlossen ist.
- *
- * Bewusst kein Caching von App-Dateien: der Plan soll immer der aktuelle
- * sein, und die Offline-Kopie der Daten liegt bereits im localStorage.
+ *  3. Die App auch ohne Netz starten lassen. Die Daten liegen ohnehin als
+ *     Kopie im localStorage; ohne die Programmdateien nützt das aber
+ *     nichts, wenn im Supermarkt das Netz wegbleibt.
  */
 
-self.addEventListener('install', () => {
+const CACHE = 'wochenplan-v1'
+
+self.addEventListener('install', (event) => {
+  // Die Startseite mitnehmen – der Rest kommt beim ersten Laden dazu.
+  event.waitUntil(
+    caches
+      .open(CACHE)
+      .then((cache) => cache.add(new Request('./', { cache: 'reload' })))
+      .catch(() => undefined),
+  )
   // Neue Fassung sofort übernehmen, statt auf das Schließen aller Tabs zu warten.
   self.skipWaiting()
 })
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim())
+  event.waitUntil(
+    caches
+      .keys()
+      .then((names) => Promise.all(names.filter((n) => n !== CACHE).map((n) => caches.delete(n))))
+      .then(() => self.clients.claim()),
+  )
+})
+
+self.addEventListener('fetch', (event) => {
+  const request = event.request
+  // Nur eigene Dateien: alles Richtung Supabase muss unangetastet durchlaufen.
+  if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return
+
+  if (request.mode === 'navigate') {
+    // Beim Seitenaufruf zuerst das Netz fragen, damit eine neue Fassung der
+    // App auch wirklich ankommt; die Kopie ist nur der Notnagel ohne Netz.
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const copy = response.clone()
+          void caches.open(CACHE).then((cache) => cache.put('./', copy))
+          return response
+        })
+        .catch(() => caches.match('./').then((hit) => hit ?? Response.error())),
+    )
+    return
+  }
+
+  // Skripte, Stile und Bilder tragen einen Inhalts-Hash im Namen: Was einmal
+  // unter diesem Namen geladen wurde, ändert sich nie wieder.
+  event.respondWith(
+    caches.match(request).then(
+      (hit) =>
+        hit ??
+        fetch(request).then((response) => {
+          if (response.ok && response.type === 'basic') {
+            const copy = response.clone()
+            void caches.open(CACHE).then((cache) => cache.put(request, copy))
+          }
+          return response
+        }),
+    ),
+  )
 })
 
 self.addEventListener('push', (event) => {

@@ -7,10 +7,6 @@
   --line: #e6dbcd;
   --accent: #d97b3a;
   --accent-soft: #fdeee2;
-  --mama: #c2569a;
-  --mama-soft: #fbeaf4;
-  --papa: #3f7fb5;
-  --papa-soft: #e6f0f9;
   --weekend: #fff8ec;
   --radius: 14px;
   --shadow: 0 1px 2px rgb(44 38 34 / 6%), 0 6px 18px rgb(44 38 34 / 6%);
@@ -27,10 +23,6 @@
     --line: #383140;
     --accent: #f0a35f;
     --accent-soft: #3a2a1c;
-    --mama: #e08bc0;
-    --mama-soft: #3a2434;
-    --papa: #7fb4e0;
-    --papa-soft: #1e2f3f;
     --weekend: #26212b;
     --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 6px 18px rgb(0 0 0 / 25%);
   }
@@ -371,7 +363,9 @@ button:focus-visible {
   padding: 0.2rem 0.1rem;
 }
 
+/* Rahmen- und Hintergrundfarbe setzt die Person, siehe Schedule.tsx. */
 .bedtime {
+  color: var(--ink);
   display: flex;
   gap: 0.6rem;
   align-items: center;
@@ -380,18 +374,6 @@ button:focus-visible {
   text-align: left;
   border: 1px dashed;
   border-radius: 10px;
-}
-
-.bedtime-mama {
-  background: var(--mama-soft);
-  border-color: var(--mama);
-  color: var(--ink);
-}
-
-.bedtime-papa {
-  background: var(--papa-soft);
-  border-color: var(--papa);
-  color: var(--ink);
 }
 
 .bedtime-body {
@@ -974,4 +956,113 @@ button:focus-visible {
   color: #fff;
   background: var(--accent);
   border-radius: 999px;
+}
+
+/* --- Personen ------------------------------------------------------------- */
+
+.person-list {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.person-list li {
+  padding: 0.6rem 0.7rem;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.person-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.person-row + .person-row {
+  margin-top: 0.5rem;
+}
+
+.person-emoji {
+  flex: 0 0 3rem;
+  text-align: center;
+  font-size: 1.1rem;
+}
+
+.person-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.person-bedtime {
+  margin: 0 0 0 auto;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.color-choice {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.color-dot {
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 999px;
+}
+
+.color-dot.on {
+  /* Der Ring liegt außerhalb des Punktes, damit die Farbe voll sichtbar bleibt. */
+  border-color: var(--surface);
+  box-shadow: 0 0 0 2px var(--ink-soft);
+}
+
+/* --- Zeiträume ------------------------------------------------------------ */
+
+.span-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.span-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.35rem 0.7rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.span-chip:hover {
+  border-color: var(--accent);
+}
+
+.span-range {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+
+/* Der Streifen im Tag zeigt, dass der Zeitraum auch diesen Tag betrifft. */
+.day-span {
+  padding: 0.3rem 0.5rem;
+  font-size: 0.8rem;
+  background: var(--surface-2);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+}
+
+.span-emoji-field {
+  flex: 0 0 5.5rem;
 }

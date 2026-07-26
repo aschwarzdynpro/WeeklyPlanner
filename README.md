@@ -2,7 +2,7 @@
 
 Eine kleine Web-App für die Wochenplanung einer Familie: Essensplan von Montag bis Sonntag,
 die passenden Rezepte, eine automatisch berechnete Einkaufsliste und ein Terminplan, in dem
-abends der Bettdienst zwischen Mama und Papa rotiert.
+abends der Bettdienst reihum geht.
 
 Der Zugriff ist durch einen Login mit E-Mail und Passwort geschützt. Die Daten liegen in Supabase
 und stehen dadurch auf allen Geräten der Familie zur Verfügung — Handy, Tablet und Laptop zeigen
@@ -14,6 +14,11 @@ denselben Plan, Änderungen erscheinen dank Realtime sofort auf dem jeweils ande
 ausgewogen), Samstag und Sonntag etwas Kräftigeres. Jedes Gericht lässt sich gegen ein anderes
 aus der Bibliothek tauschen, ebenso gegen „Reste-Essen“ oder „Auswärts essen“.
 
+**Familie** — wer zum Haushalt gehört, steht in den Einstellungen: Name, Zeichen und Farbe frei
+wählbar. Mitgeliefert sind Mama, Papa und Kind; Geschwister, Oma oder eine Tagesmutter kommen mit
+einem Klick dazu. Wer beim Bettdienst mitmacht, entscheidet ein Haken — die Rotation verteilt die
+Abende dann reihum, egal ob auf zwei oder vier Personen.
+
 **Rezepte** — mit Zutaten, Schritt-für-Schritt-Anleitung und einem Hinweis, was das Kind
 übernehmen kann. Alle Mengen rechnen sich automatisch auf die eingestellte Portionszahl um.
 
@@ -21,16 +26,18 @@ aus der Bibliothek tauschen, ebenso gegen „Reste-Essen“ oder „Auswärts es
 zusammengezählt und nach Kategorien sortiert (Obst & Gemüse, Fleisch & Fisch …). Abhaken beim
 Einkaufen, eigene Artikel ergänzen, per Knopfdruck als Text für WhatsApp kopieren.
 
-**Termine** — pro Tag Termine mit Uhrzeit, Ort, Notiz und den Teilnehmern (Mama, Papa, Kind —
-mehrere gleichzeitig, ohne Auswahl gilt der Termin für alle). Was sich regelmäßig wiederholt,
+**Termine** — pro Tag Termine mit Uhrzeit, Ort, Notiz und den Teilnehmern (mehrere gleichzeitig,
+ohne Auswahl gilt der Termin für alle). Was keine Uhrzeit hat, sondern einen Zeitraum — Urlaub,
+Kita-Schließtage, eine Dienstreise —, steht als Balken über der Woche und in jedem betroffenen
+Tag; solche Zeiträume dürfen über Wochengrenzen hinausgehen. Was sich regelmäßig wiederholt,
 wird zum **Serientermin**: wöchentlich bis vierwöchentlich, auf Wunsch mit Enddatum. Ein
 einzelner Tag einer Serie lässt sich verschieben oder absagen, ohne die übrigen anzufassen.
 Zu jedem Termin lässt sich eine **Erinnerung** stellen, von zehn Minuten bis einen Tag vorher —
 siehe [Erinnerungen](#erinnerungen). In jedem Tag steht fest der
-Bettdienst-Balken von 19:00 bis 20:00 Uhr, farbig nach 👩 Mama bzw. 👨 Papa. Der Dienst wechselt
-täglich und läuft über das Wochenende hinweg weiter, sodass beide über zwei Wochen auf gleich
-viele Abende kommen. Ein Tipp auf den Balken tauscht einen einzelnen Tag, „Rotation tauschen“
-dreht die ganze Reihenfolge um.
+Bettdienst-Balken von 19:00 bis 20:00 Uhr, in der Farbe der Person, die dran ist. Der Dienst
+wechselt täglich und läuft über das Wochenende hinweg weiter, sodass sich die Abende über zwei
+Wochen (bei zwei Personen) gleichmäßig verteilen. Ein Tipp auf den Balken reicht einen einzelnen
+Tag weiter, „Rotation verschieben“ dreht die ganze Reihenfolge.
 
 Eine ausdruckbare Fassung von Plan, Rezepten und Einkaufsliste liegt unter
 [`docs/Wochenplan.md`](docs/Wochenplan.md).
@@ -92,9 +99,23 @@ Links aus den Bestätigungs- und „Passwort vergessen“-Mails ins Leere.
 
 ### 5. Auf Handy und Tablet
 
-Adresse im Browser öffnen, anmelden und über „Zum Home-Bildschirm hinzufügen“ ablegen — dann
-verhält sich die App wie eine installierte App. Die Anmeldung bleibt bestehen, bis man sich
-abmeldet.
+Adresse im Browser öffnen, anmelden und über „Zum Home-Bildschirm hinzufügen“ ablegen. Dank
+[`public/manifest.webmanifest`](public/manifest.webmanifest) startet die App danach ohne
+Browser-Rahmen, mit eigenem Icon und in den Farben der App. Die Anmeldung bleibt bestehen, bis man
+sich abmeldet.
+
+Auf dem iPhone ist dieser Schritt Pflicht, sobald Erinnerungen gewünscht sind: Safari zeigt
+Benachrichtigungen ausschließlich für Seiten, die auf dem Startbildschirm liegen.
+
+Der Service Worker legt die Programmdateien nebenbei im Gerät ab. Fällt im Supermarkt das Netz
+aus, startet die App trotzdem und arbeitet mit der lokalen Kopie der Daten weiter.
+
+Die Icons erzeugt [`scripts/generate-icons.ts`](scripts/generate-icons.ts) — ein Kalenderblatt aus
+ein paar Rechtecken und Kreisen, ohne Bildbibliothek. Nach einer Änderung an Farben oder Motiv:
+
+```bash
+npm run icons
+```
 
 ## Wöchentlich neue Rezepte
 
@@ -163,7 +184,10 @@ hinzufügen“ abgelegt wurde — auf Android und am Rechner geht es direkt.
 
 1. **Schema:** [`supabase/migrations/0004_reminders.sql`](supabase/migrations/0004_reminders.sql)
    im SQL-Editor ausführen. Legt `push_subscriptions` (ein Eintrag je Gerät) und `reminder_sent`
-   (was schon rausging) an, beide mit Row Level Security.
+   (was schon rausging) an, beide mit Row Level Security. Danach
+   [`0005_people.sql`](supabase/migrations/0005_people.sql) hinterher — die Abos merken sich, für
+   wen ein Gerät Erinnerungen bekommt, und das dürfen seit den frei wählbaren Personen beliebige
+   Namen sein.
 
 2. **Schlüsselpaar erzeugen:**
 
@@ -221,29 +245,47 @@ ein Tablet, das mehrere in die Hand nehmen.
 ## Aufbau
 
 ```
-public/sw.js            Service Worker: zeigt Erinnerungen an, nimmt Push entgegen
+public/sw.js              Service Worker: Erinnerungen, Push und Start ohne Netz
+public/manifest.webmanifest  Damit die App auf dem Startbildschirm landet
 src/
-  data/recipes.ts       Rezeptbibliothek (Zutaten, Schritte, Kinder-Tipps)
-  lib/week.ts           Wochenlogik: Kalenderwoche, Datumsrechnung, Bettdienst-Rotation
-  lib/series.ts         Serientermine in die Termine einer Woche ausklappen
-  lib/shopping.ts       Einkaufsliste aus dem Wochenplan berechnen und gruppieren
-  lib/notifications.ts  Erlaubnis, Service Worker und Einstellungen je Gerät
-  storage/local.ts      Offline-Kopie im Browser, getrennt je Haushalt
-  storage/supabase.ts   Login, Haushalte und Datenspeicher inkl. Realtime
-  storage/push.ts       An- und Abmelden beim Push-Dienst des Browsers
-  hooks/usePlanner.ts   Laden, Speichern (entprellt) und Wochenwechsel
-  hooks/useReminders.ts Prüft im Minutentakt, welche Erinnerung fällig ist
-  components/           Oberfläche: Login, Essensplan, Einkauf, Termine, Rezepte, Einstellungen
-supabase/migrations/    SQL-Schema für Supabase
-supabase/functions/     Edge Functions: Rezepte erzeugen, Erinnerungen verschicken
+  data/recipes.ts         Rezeptbibliothek (Zutaten, Schritte, Kinder-Tipps)
+  lib/week.ts             Wochenlogik: Kalenderwoche, Datumsrechnung, Bettdienst-Rotation
+  lib/series.ts           Serientermine in die Termine einer Woche ausklappen
+  lib/spans.ts            Zeiträume, die über Wochengrenzen hinauslaufen
+  lib/shopping.ts         Einkaufsliste aus dem Wochenplan berechnen und gruppieren
+  lib/notifications.ts    Erlaubnis, Service Worker und Einstellungen je Gerät
+  lib/*.test.ts           Tests der Rechenlogik (`npm test`)
+  storage/local.ts        Offline-Kopie im Browser, getrennt je Haushalt
+  storage/supabase.ts     Login, Haushalte und Datenspeicher inkl. Realtime
+  storage/push.ts         An- und Abmelden beim Push-Dienst des Browsers
+  hooks/usePlanner.ts     Laden, Speichern (entprellt) und Wochenwechsel
+  hooks/useHouseholdDoc.ts  Dokumente, die dem Haushalt gehören statt einer Woche
+  hooks/useReminders.ts   Prüft im Minutentakt, welche Erinnerung fällig ist
+  components/             Oberfläche: Login, Essensplan, Einkauf, Termine, Rezepte, Einstellungen
+supabase/migrations/      SQL-Schema für Supabase
+supabase/functions/       Edge Functions: Rezepte erzeugen, Erinnerungen verschicken
 scripts/generate-plan.ts  Erzeugt docs/Wochenplan.md aus den Rezeptdaten (`npm run plan`)
+scripts/generate-icons.ts App-Icons als PNG (`npm run icons`)
 ```
 
-Alle Daten liegen als benannte JSON-Dokumente (`week:2026-07-27`, `settings`, `series`). Das hält
-beide Speicher-Backends simpel und erlaubt spätere Erweiterungen ohne Datenbank-Migration.
-Serientermine stehen bewusst in einem eigenen Dokument statt in jeder Woche: eine Änderung wirkt
-damit sofort auf alle Wochen, auch auf die, die noch niemand geöffnet hat. Beim Anzeigen werden
-sie in die jeweilige Woche ausgeklappt; ein einzeln abgesagter Tag steht als Ausnahme in der Serie.
+Alle Daten liegen als benannte JSON-Dokumente (`week:2026-07-27`, `settings`, `series`, `spans`).
+Das hält beide Speicher-Backends simpel und erlaubt spätere Erweiterungen ohne
+Datenbank-Migration. Serientermine und Zeiträume stehen bewusst in eigenen Dokumenten statt in
+jeder Woche: eine Änderung wirkt damit sofort auf alle Wochen, auch auf die, die noch niemand
+geöffnet hat. Beim Anzeigen werden sie in die jeweilige Woche ausgeklappt; ein einzeln abgesagter
+Tag steht als Ausnahme in der Serie.
+
+Die Personen des Haushalts stehen im `settings`-Dokument. Ihre `id` taucht in Terminen, im
+Bettdienst und in den Push-Abos auf und ändert sich nie — der angezeigte Name schon. Die drei
+mitgelieferten behalten die ids `mama`, `papa` und `kind`, mit denen schon vorher gespeichert
+wurde; deshalb ist beim Umstieg nichts umzuschreiben.
+
+Die Rechenlogik — Kalenderwoche, Bettdienst-Rotation, Serien, Zeiträume und Einkaufsliste — liegt
+in `src/lib` als reine Funktionen ohne Oberfläche und ist dort mit Tests abgedeckt:
+
+```bash
+npm test
+```
 
 ## Eigene Rezepte ergänzen
 

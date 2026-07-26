@@ -19,7 +19,11 @@ const TIMEZONE = Deno.env.get('REMINDER_TIMEZONE') ?? 'Europe/Berlin'
 const DAY_KEYS = ['mo', 'di', 'mi', 'do', 'fr', 'sa', 'so'] as const
 type DayKey = (typeof DAY_KEYS)[number]
 
-const ATTENDEE_LABEL: Record<string, string> = { mama: 'Mama', papa: 'Papa', kind: 'Kind' }
+/** Person aus den Einstellungen des Haushalts. */
+interface Person {
+  id: string
+  name: string
+}
 
 interface CalendarEvent {
   id: string
@@ -147,11 +151,19 @@ function relativeDay(eventDate: string, today: string): string {
   }).format(new Date(Date.UTC(y, m - 1, d)))
 }
 
-function bodyFor(event: CalendarEvent, eventDate: string, today: string): string {
+function bodyFor(
+  event: CalendarEvent,
+  eventDate: string,
+  today: string,
+  people: Person[],
+): string {
   const parts = [`${relativeDay(eventDate, today)} um ${event.start} Uhr`]
   if (event.location) parts.push(`📍 ${event.location}`)
-  const who = (event.who ?? []).map((w) => ATTENDEE_LABEL[w]).filter(Boolean)
-  if (who.length > 0 && who.length < 3) parts.push(who.join(', '))
+  // Namen nur nennen, wenn sie etwas eingrenzen – "alle" weiß man auch so.
+  const named = people.filter((p) => (event.who ?? []).includes(p.id))
+  if (named.length > 0 && named.length < people.length) {
+    parts.push(named.map((p) => p.name).join(', '))
+  }
   if (event.note) parts.push(event.note)
   return parts.join(' · ')
 }
@@ -207,7 +219,7 @@ Deno.serve(async (req: Request) => {
     byHousehold.set(sub.household_id, list)
   }
 
-  const keys = [...weeks.map((w) => `week:${w}`), 'series']
+  const keys = [...weeks.map((w) => `week:${w}`), 'series', 'settings']
   let sent = 0
   const stale: string[] = []
 
@@ -224,6 +236,9 @@ Deno.serve(async (req: Request) => {
 
     const docByKey = new Map((docs ?? []).map((d) => [d.key as string, d.data]))
     const series = (docByKey.get('series') ?? []) as EventSeries[]
+    // Die Namen für den Text der Meldung; ohne Einstellungen bleibt sie namenlos.
+    const settings = (docByKey.get('settings') ?? {}) as { people?: Person[] }
+    const people = Array.isArray(settings.people) ? settings.people : []
 
     for (const weekStart of weeks) {
       const weekData = (docByKey.get(`week:${weekStart}`) ?? {}) as { events?: CalendarEvent[] }
@@ -259,7 +274,7 @@ Deno.serve(async (req: Request) => {
 
         const payload = JSON.stringify({
           title: `⏰ ${event.title}`,
-          body: bodyFor(event, eventDate, today),
+          body: bodyFor(event, eventDate, today, people),
           tag: key,
         })
 

@@ -51,7 +51,49 @@ export const DAYS: { key: DayKey; long: string; short: string }[] = [
   { key: 'so', long: 'Sonntag', short: 'So' },
 ]
 
-export type Parent = 'mama' | 'papa'
+/**
+ * Ein Mitglied der Familie.
+ *
+ * Die `id` steht in Terminen, im Bettdienst und in den Push-Abos und darf
+ * sich deshalb nie ändern — der angezeigte Name schon. Die drei
+ * mitgelieferten Personen behalten die ids `mama`, `papa` und `kind`, die
+ * schon in den bisherigen Daten stehen; deshalb braucht es für vorhandene
+ * Haushalte keine Umschreibung.
+ */
+export interface Person {
+  id: string
+  name: string
+  emoji: string
+  /** Farbe für den Bettdienst-Balken und die Marker am Termin. */
+  color: string
+  /** Nimmt an der Bettdienst-Rotation teil. */
+  bedtime: boolean
+}
+
+/** Auswahl in der Personenverwaltung – bewusst kurz gehalten. */
+export const PERSON_COLORS = [
+  '#c2569a',
+  '#3f7fb5',
+  '#3f9b6d',
+  '#d97b3a',
+  '#8a6bbf',
+  '#c2554b',
+] as const
+
+export const DEFAULT_PEOPLE: Person[] = [
+  { id: 'mama', name: 'Mama', emoji: '👩', color: '#c2569a', bedtime: true },
+  { id: 'papa', name: 'Papa', emoji: '👨', color: '#3f7fb5', bedtime: true },
+  { id: 'kind', name: 'Kind', emoji: '🧒', color: '#3f9b6d', bedtime: false },
+]
+
+/** Wer den Bettdienst übernimmt, in der Reihenfolge der Personenliste. */
+export function bedtimeRotation(people: Person[]): Person[] {
+  return people.filter((p) => p.bedtime)
+}
+
+export function personById(people: Person[], id: string): Person | undefined {
+  return people.find((p) => p.id === id)
+}
 
 export interface MealSlot {
   /** Rezept-ID aus der Bibliothek, oder `null` wenn frei/eigener Text. */
@@ -59,23 +101,6 @@ export interface MealSlot {
   /** Freitext statt Rezept, z. B. "Reste" oder "Bei Oma". */
   custom?: string
   note?: string
-}
-
-/** Wer bei einem Termin dabei ist. Mehrfachauswahl, leere Liste = alle. */
-export type Attendee = 'mama' | 'papa' | 'kind'
-
-export const ATTENDEES: Attendee[] = ['mama', 'papa', 'kind']
-
-export const ATTENDEE_LABEL: Record<Attendee, string> = {
-  mama: 'Mama',
-  papa: 'Papa',
-  kind: 'Kind',
-}
-
-export const ATTENDEE_EMOJI: Record<Attendee, string> = {
-  mama: '👩',
-  papa: '👨',
-  kind: '🧒',
 }
 
 export interface CalendarEvent {
@@ -86,8 +111,8 @@ export interface CalendarEvent {
   /** "HH:MM", optional */
   end?: string
   title: string
-  /** Teilnehmer – leere Liste heißt "alle". */
-  who: Attendee[]
+  /** Teilnehmer als Personen-ids – leere Liste heißt "alle". */
+  who: string[]
   /** Wo der Termin stattfindet, z. B. "Turnhalle Grundschule". */
   location?: string
   note?: string
@@ -115,7 +140,7 @@ export interface EventSeries {
   /** "HH:MM", optional */
   end?: string
   title: string
-  who: Attendee[]
+  who: string[]
   location?: string
   note?: string
   remindMinutes?: number
@@ -128,6 +153,36 @@ export interface EventSeries {
   /** Einzeln abgesagte Termine, ISO-Datum des jeweiligen Tages. */
   skipped: string[]
 }
+
+/**
+ * Ein Zeitraum ohne Uhrzeit: Urlaub, Kita-Schließtage, eine Dienstreise.
+ *
+ * Zeiträume liegen wie die Serien in einem eigenen Dokument des Haushalts,
+ * denn sie laufen über Wochengrenzen hinweg — ein zweiwöchiger Urlaub steht
+ * sonst in zwei Wochendokumenten und müsste beim Verschieben in beiden
+ * geändert werden.
+ */
+export interface EventSpan {
+  id: string
+  title: string
+  /** Zeichen für die Anzeige, z. B. 🏖️ oder 🏫. */
+  emoji: string
+  /** Erster Tag, ISO "YYYY-MM-DD". */
+  from: string
+  /** Letzter Tag einschließlich, ISO. */
+  until: string
+  who: string[]
+  note?: string
+}
+
+/** Schnellauswahl im Zeitraum-Formular. */
+export const SPAN_PRESETS: { emoji: string; title: string }[] = [
+  { emoji: '🏖️', title: 'Urlaub' },
+  { emoji: '🏫', title: 'Kita/Schule zu' },
+  { emoji: '✈️', title: 'Dienstreise' },
+  { emoji: '🤒', title: 'Krank' },
+  { emoji: '🎉', title: 'Besuch' },
+]
 
 /** Auswahl für die Wiederholung im Termin-Formular. */
 export const REPEAT_CHOICES: { weeks: number; label: string }[] = [
@@ -165,7 +220,8 @@ export interface WeekData {
   weekStart: string // ISO "YYYY-MM-DD", immer ein Montag
   meals: Record<DayKey, MealSlot>
   events: CalendarEvent[]
-  bedtime: Record<DayKey, Parent>
+  /** Wer an welchem Tag den Bettdienst hat, als Personen-id. */
+  bedtime: Record<DayKey, string>
   shopping: ShoppingItem[]
   /** Zeitpunkt der letzten Änderung (ISO), für Sync-Konflikte. */
   updatedAt: string
@@ -173,26 +229,25 @@ export interface WeekData {
 
 export interface Settings {
   servings: number
-  /** Startet die Bettdienst-Rotation mit Mama oder Papa. */
-  bedtimeStart: Parent
+  /** Die Mitglieder des Haushalts, in der Reihenfolge der Anzeige. */
+  people: Person[]
+  /** Person, mit der die Bettdienst-Rotation beginnt. */
+  bedtimeStart: string
   bedtimeFrom: string
   bedtimeTo: string
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   servings: 3,
+  people: DEFAULT_PEOPLE,
   bedtimeStart: 'mama',
   bedtimeFrom: '19:00',
   bedtimeTo: '20:00',
 }
 
-export const PARENT_LABEL: Record<Parent, string> = { mama: 'Mama', papa: 'Papa' }
-export const PARENT_EMOJI: Record<Parent, string> = { mama: '👩', papa: '👨' }
-
 /** "Mama, Kind" bzw. "Alle", wenn niemand ausdrücklich ausgewählt wurde. */
-export function attendeeLabel(who: Attendee[]): string {
-  if (who.length === 0 || who.length === ATTENDEES.length) return 'Alle'
-  return ATTENDEES.filter((a) => who.includes(a))
-    .map((a) => ATTENDEE_LABEL[a])
-    .join(', ')
+export function attendeeLabel(who: string[], people: Person[]): string {
+  const named = people.filter((p) => who.includes(p.id))
+  if (named.length === 0 || named.length === people.length) return 'Alle'
+  return named.map((p) => p.name).join(', ')
 }
