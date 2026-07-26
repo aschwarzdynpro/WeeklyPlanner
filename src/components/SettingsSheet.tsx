@@ -1,12 +1,22 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import type { Settings } from '../types'
+import { ATTENDEES, ATTENDEE_LABEL } from '../types'
+import type { Attendee, Settings } from '../types'
 import { signOut, updatePassword } from '../storage/supabase'
+import {
+  notificationPermission,
+  notificationsSupported,
+  requestNotificationPermission,
+} from '../lib/notifications'
+import type { ReminderPrefs } from '../lib/notifications'
+import { currentPushSubscription, disablePush, enablePush, pushConfigured, updatePushAttendee } from '../storage/push'
 import { Modal } from './Modal'
 
 interface Props {
   settings: Settings
   onChange: (patch: Partial<Settings>) => void
+  reminders: ReminderPrefs
+  onRemindersChange: (patch: Partial<ReminderPrefs>) => void
   session: Session
   householdId: string
   onSignOut: () => void
@@ -16,6 +26,8 @@ interface Props {
 export function SettingsSheet({
   settings,
   onChange,
+  reminders,
+  onRemindersChange,
   session,
   householdId,
   onSignOut,
@@ -26,6 +38,63 @@ export function SettingsSheet({
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [pushBusy, setPushBusy] = useState(false)
+  const [reminderError, setReminderError] = useState<string | null>(null)
+  const supported = notificationsSupported()
+
+  // Der Nutzer kann die Erlaubnis jederzeit im Browser zurücknehmen –
+  // dann darf hier kein Haken stehen bleiben, der nichts mehr bewirkt.
+  useEffect(() => {
+    if (!supported) return
+    if (reminders.enabled && notificationPermission() !== 'granted') {
+      onRemindersChange({ enabled: false, push: false })
+      return
+    }
+    if (!reminders.push) return
+    void currentPushSubscription().then((sub) => {
+      if (!sub) onRemindersChange({ push: false })
+    })
+  }, [supported, reminders.enabled, reminders.push, onRemindersChange])
+
+  const toggleReminders = async (on: boolean) => {
+    setReminderError(null)
+    if (!on) {
+      if (reminders.push) await disablePush().catch(() => undefined)
+      onRemindersChange({ enabled: false, push: false })
+      return
+    }
+    const permission = await requestNotificationPermission()
+    if (permission !== 'granted') {
+      setReminderError(
+        'Der Browser zeigt keine Benachrichtigungen an. Die Erlaubnis lässt sich in den Website-Einstellungen des Browsers wieder erteilen.',
+      )
+      return
+    }
+    onRemindersChange({ enabled: true })
+  }
+
+  const togglePush = async (on: boolean) => {
+    setReminderError(null)
+    setPushBusy(true)
+    try {
+      if (on) {
+        await enablePush(householdId, reminders.onlyFor)
+        onRemindersChange({ push: true })
+      } else {
+        await disablePush()
+        onRemindersChange({ push: false })
+      }
+    } catch (err) {
+      setReminderError(err instanceof Error ? err.message : 'Push ließ sich nicht einrichten.')
+    } finally {
+      setPushBusy(false)
+    }
+  }
+
+  const changeOnlyFor = (value: Attendee | 'alle') => {
+    onRemindersChange({ onlyFor: value })
+    if (reminders.push) void updatePushAttendee(value)
+  }
 
   const changePassword = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -91,6 +160,67 @@ export function SettingsSheet({
         stellst du im Reiter <strong>Termine</strong> um: einzelne Tage per Tipp auf das
         Bettdienst-Feld, die gesamte Rotation über „Rotation tauschen“.
       </p>
+
+      <h3>Erinnerungen</h3>
+      {!supported ? (
+        <p className="muted small">
+          Dieser Browser kann keine Benachrichtigungen anzeigen. Auf dem iPhone klappt es erst,
+          wenn die App über „Zum Home-Bildschirm hinzufügen“ abgelegt wurde.
+        </p>
+      ) : (
+        <>
+          <label className="switch-row">
+            <input
+              type="checkbox"
+              checked={reminders.enabled}
+              onChange={(e) => void toggleReminders(e.target.checked)}
+            />
+            <span>An anstehende Termine erinnern</span>
+          </label>
+
+          {reminders.enabled && (
+            <>
+              <label className="form-label">
+                Welche Termine?
+                <select
+                  value={reminders.onlyFor}
+                  onChange={(e) => changeOnlyFor(e.target.value as Attendee | 'alle')}
+                >
+                  <option value="alle">Alle Termine</option>
+                  {ATTENDEES.map((a) => (
+                    <option key={a} value={a}>
+                      Nur Termine mit {ATTENDEE_LABEL[a]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {pushConfigured && (
+                <label className="switch-row">
+                  <input
+                    type="checkbox"
+                    checked={reminders.push}
+                    disabled={pushBusy}
+                    onChange={(e) => void togglePush(e.target.checked)}
+                  />
+                  <span>Auch bei geschlossener App melden</span>
+                </label>
+              )}
+
+              <p className="muted small">
+                Die Vorlaufzeit steht am einzelnen Termin – vom „10 Minuten vorher“ bis zum
+                „einen Tag vorher“.
+                {reminders.push
+                  ? ' Die Erinnerung kommt auch dann, wenn der Wochenplan gerade geschlossen ist.'
+                  : ' Ohne Push meldet sich das Gerät nur, solange die App geöffnet ist – der Tab darf im Hintergrund liegen.'}{' '}
+                Die Einstellung gilt nur für dieses Gerät.
+              </p>
+            </>
+          )}
+
+          {reminderError && <p className="error-line">{reminderError}</p>}
+        </>
+      )}
 
       <h3>Geräte verbinden</h3>
       <label className="form-label">

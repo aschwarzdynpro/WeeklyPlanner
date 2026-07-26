@@ -61,6 +61,23 @@ export interface MealSlot {
   note?: string
 }
 
+/** Wer bei einem Termin dabei ist. Mehrfachauswahl, leere Liste = alle. */
+export type Attendee = 'mama' | 'papa' | 'kind'
+
+export const ATTENDEES: Attendee[] = ['mama', 'papa', 'kind']
+
+export const ATTENDEE_LABEL: Record<Attendee, string> = {
+  mama: 'Mama',
+  papa: 'Papa',
+  kind: 'Kind',
+}
+
+export const ATTENDEE_EMOJI: Record<Attendee, string> = {
+  mama: '👩',
+  papa: '👨',
+  kind: '🧒',
+}
+
 export interface CalendarEvent {
   id: string
   day: DayKey
@@ -69,9 +86,67 @@ export interface CalendarEvent {
   /** "HH:MM", optional */
   end?: string
   title: string
-  who: 'mama' | 'papa' | 'kind' | 'alle'
+  /** Teilnehmer – leere Liste heißt "alle". */
+  who: Attendee[]
+  /** Wo der Termin stattfindet, z. B. "Turnhalle Grundschule". */
+  location?: string
   note?: string
+  /** Vorlauf der Erinnerung in Minuten; fehlt oder 0 = keine Erinnerung. */
+  remindMinutes?: number
+  /**
+   * Bei Terminen, die aus einer Serie stammen: deren id. Solche Termine
+   * stehen nicht in `WeekData.events`, sie werden beim Anzeigen erzeugt.
+   */
+  seriesId?: string
 }
+
+/**
+ * Ein Termin, der sich wiederholt – z. B. Turnen jeden Dienstag.
+ *
+ * Serien liegen bewusst nicht in den Wochendokumenten, sondern in einem
+ * eigenen Dokument des Haushalts: eine Änderung an der Serie wirkt damit
+ * sofort auf alle Wochen, auch auf die, die noch niemand geöffnet hat.
+ */
+export interface EventSeries {
+  id: string
+  day: DayKey
+  /** "HH:MM" */
+  start: string
+  /** "HH:MM", optional */
+  end?: string
+  title: string
+  who: Attendee[]
+  location?: string
+  note?: string
+  remindMinutes?: number
+  /** Wiederholung alle n Wochen: 1 = wöchentlich, 2 = 14-tägig … */
+  everyWeeks: number
+  /** Montag der ersten Woche, ISO "YYYY-MM-DD". */
+  from: string
+  /** Letzter Tag einschließlich, ISO. Fehlt = läuft weiter. */
+  until?: string
+  /** Einzeln abgesagte Termine, ISO-Datum des jeweiligen Tages. */
+  skipped: string[]
+}
+
+/** Auswahl für die Wiederholung im Termin-Formular. */
+export const REPEAT_CHOICES: { weeks: number; label: string }[] = [
+  { weeks: 1, label: 'Jede Woche' },
+  { weeks: 2, label: 'Alle 2 Wochen' },
+  { weeks: 3, label: 'Alle 3 Wochen' },
+  { weeks: 4, label: 'Alle 4 Wochen' },
+]
+
+/** Vorlaufzeiten für die Erinnerung, in Minuten. */
+export const REMINDER_CHOICES: { minutes: number; label: string }[] = [
+  { minutes: 0, label: 'Keine Erinnerung' },
+  { minutes: 10, label: '10 Minuten vorher' },
+  { minutes: 30, label: '30 Minuten vorher' },
+  { minutes: 60, label: '1 Stunde vorher' },
+  { minutes: 120, label: '2 Stunden vorher' },
+  { minutes: 720, label: '12 Stunden vorher' },
+  { minutes: 1440, label: 'Einen Tag vorher' },
+]
 
 export interface ShoppingItem {
   id: string
@@ -113,9 +188,11 @@ export const DEFAULT_SETTINGS: Settings = {
 
 export const PARENT_LABEL: Record<Parent, string> = { mama: 'Mama', papa: 'Papa' }
 export const PARENT_EMOJI: Record<Parent, string> = { mama: '👩', papa: '👨' }
-export const WHO_LABEL: Record<CalendarEvent['who'], string> = {
-  mama: 'Mama',
-  papa: 'Papa',
-  kind: 'Kind',
-  alle: 'Alle',
+
+/** "Mama, Kind" bzw. "Alle", wenn niemand ausdrücklich ausgewählt wurde. */
+export function attendeeLabel(who: Attendee[]): string {
+  if (who.length === 0 || who.length === ATTENDEES.length) return 'Alle'
+  return ATTENDEES.filter((a) => who.includes(a))
+    .map((a) => ATTENDEE_LABEL[a])
+    .join(', ')
 }

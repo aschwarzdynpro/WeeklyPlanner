@@ -1,12 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DEFAULT_SETTINGS } from '../types'
-import type { Settings, WeekData } from '../types'
-import { addDays, fromISODate, normalizeWeek, startOfWeek, toISODate } from '../lib/week'
+import type { EventSeries, Settings, WeekData } from '../types'
+import {
+  addDays,
+  fromISODate,
+  normalizeSeries,
+  normalizeWeek,
+  startOfWeek,
+  toISODate,
+} from '../lib/week'
 import type { StorageAdapter } from '../storage/types'
 
 export type SyncState = 'lädt' | 'gespeichert' | 'offline'
 
 const SETTINGS_KEY = 'settings'
+/** Serientermine gelten über alle Wochen hinweg – eigenes Dokument. */
+const SERIES_KEY = 'series'
 const weekKey = (weekStart: string) => `week:${weekStart}`
 
 /**
@@ -19,6 +28,7 @@ export function usePlanner(adapter: StorageAdapter, cache: StorageAdapter) {
   const [weekStart, setWeekStart] = useState(() => toISODate(startOfWeek(new Date())))
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   const [week, setWeek] = useState<WeekData | null>(null)
+  const [series, setSeries] = useState<EventSeries[]>([])
   const [sync, setSync] = useState<SyncState>('lädt')
 
   // Verhindert, dass frisch geladene Daten sofort wieder zurückgeschrieben werden.
@@ -43,6 +53,32 @@ export function usePlanner(adapter: StorageAdapter, cache: StorageAdapter) {
       cancelled = true
     }
   }, [adapter, cache])
+
+  // --- Serientermine laden ---------------------------------------------------
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      let stored: unknown = null
+      try {
+        stored = await adapter.load<EventSeries[]>(SERIES_KEY)
+      } catch (err) {
+        console.warn('Serientermine konnten nicht geladen werden:', err)
+      }
+      stored ??= await cache.load<EventSeries[]>(SERIES_KEY)
+      if (!cancelled) setSeries(normalizeSeries(stored))
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [adapter, cache])
+
+  // Änderungen an den Serien vom anderen Gerät übernehmen.
+  useEffect(() => {
+    if (!adapter.subscribe) return
+    return adapter.subscribe<EventSeries[]>(SERIES_KEY, (incoming) => {
+      setSeries(normalizeSeries(incoming))
+    })
+  }, [adapter])
 
   // --- Woche laden -----------------------------------------------------------
   useEffect(() => {
@@ -120,6 +156,25 @@ export function usePlanner(adapter: StorageAdapter, cache: StorageAdapter) {
     [adapter, cache],
   )
 
+  /**
+   * Serien werden sofort geschrieben, nicht entprellt: sie ändern sich
+   * selten, dafür wirkt eine Änderung auf jede Woche.
+   */
+  const updateSeries = useCallback(
+    (mutate: (current: EventSeries[]) => EventSeries[]) => {
+      setSeries((current) => {
+        const next = mutate(current)
+        void cache.save(SERIES_KEY, next)
+        void adapter.save(SERIES_KEY, next).catch((err) => {
+          console.warn('Serientermine konnten nicht gespeichert werden:', err)
+          setSync('offline')
+        })
+        return next
+      })
+    },
+    [adapter, cache],
+  )
+
   const goToWeek = useCallback((offset: number) => {
     setWeekStart((current) => toISODate(addDays(fromISODate(current), offset * 7)))
   }, [])
@@ -129,7 +184,29 @@ export function usePlanner(adapter: StorageAdapter, cache: StorageAdapter) {
   }, [])
 
   return useMemo(
-    () => ({ weekStart, week, settings, sync, updateWeek, updateSettings, goToWeek, goToToday }),
-    [weekStart, week, settings, sync, updateWeek, updateSettings, goToWeek, goToToday],
+    () => ({
+      weekStart,
+      week,
+      series,
+      settings,
+      sync,
+      updateWeek,
+      updateSeries,
+      updateSettings,
+      goToWeek,
+      goToToday,
+    }),
+    [
+      weekStart,
+      week,
+      series,
+      settings,
+      sync,
+      updateWeek,
+      updateSeries,
+      updateSettings,
+      goToWeek,
+      goToToday,
+    ],
   )
 }

@@ -21,7 +21,12 @@ aus der Bibliothek tauschen, ebenso gegen „Reste-Essen“ oder „Auswärts es
 zusammengezählt und nach Kategorien sortiert (Obst & Gemüse, Fleisch & Fisch …). Abhaken beim
 Einkaufen, eigene Artikel ergänzen, per Knopfdruck als Text für WhatsApp kopieren.
 
-**Termine** — pro Tag Termine mit Uhrzeit, Person und Notiz. In jedem Tag steht fest der
+**Termine** — pro Tag Termine mit Uhrzeit, Ort, Notiz und den Teilnehmern (Mama, Papa, Kind —
+mehrere gleichzeitig, ohne Auswahl gilt der Termin für alle). Was sich regelmäßig wiederholt,
+wird zum **Serientermin**: wöchentlich bis vierwöchentlich, auf Wunsch mit Enddatum. Ein
+einzelner Tag einer Serie lässt sich verschieben oder absagen, ohne die übrigen anzufassen.
+Zu jedem Termin lässt sich eine **Erinnerung** stellen, von zehn Minuten bis einen Tag vorher —
+siehe [Erinnerungen](#erinnerungen). In jedem Tag steht fest der
 Bettdienst-Balken von 19:00 bis 20:00 Uhr, farbig nach 👩 Mama bzw. 👨 Papa. Der Dienst wechselt
 täglich und läuft über das Wochenende hinweg weiter, sodass beide über zwei Wochen auf gleich
 viele Abende kommen. Ein Tipp auf den Balken tauscht einen einzelnen Tag, „Rotation tauschen“
@@ -133,6 +138,66 @@ schickt diese Namen mit und verlangt, dass Claude sie wortgleich übernimmt. Son
 „Paprika“ und „Paprika (rot/gelb)“ als zwei Zeilen in der Einkaufsliste, weil nur zusammengezählt
 wird, was gleich heißt. Zutaten aus bereits erzeugten Rezepten kommen automatisch dazu.
 
+## Erinnerungen
+
+Jeder Termin kann eine Vorlaufzeit bekommen — „30 Minuten vorher“, „einen Tag vorher“ und was
+dazwischen liegt. Wann es klingelt, steht am Termin; **ob** es klingelt, entscheidet jedes Gerät
+für sich in den Einstellungen (⚙️ → Erinnerungen). Dort lässt sich auch einstellen, dass nur
+Termine mit einer bestimmten Person gemeldet werden — praktisch, wenn Papas Handy nicht bei
+jedem Kindergeburtstag von Mama piept.
+
+Es gibt zwei Wege, und der erste funktioniert ohne jede Einrichtung:
+
+1. **Solange die App läuft.** Der Wochenplan prüft jede Minute, was ansteht, und zeigt die
+   Erinnerung über den Service Worker an. Der Tab darf dabei im Hintergrund liegen. Nichts
+   einzurichten — Benachrichtigungen im Browser erlauben, fertig.
+
+2. **Auch bei geschlossener App** (echtes Web-Push). Dafür verschickt die Edge Function
+   [`send-reminders`](supabase/functions/send-reminders/index.ts) die Erinnerungen, angestoßen
+   von einem Cron-Job in Supabase. Das braucht die Einrichtung unten.
+
+Auf dem iPhone zeigt Safari Benachrichtigungen erst, wenn die Seite über „Zum Home-Bildschirm
+hinzufügen“ abgelegt wurde — auf Android und am Rechner geht es direkt.
+
+### Push einrichten
+
+1. **Schema:** [`supabase/migrations/0004_reminders.sql`](supabase/migrations/0004_reminders.sql)
+   im SQL-Editor ausführen. Legt `push_subscriptions` (ein Eintrag je Gerät) und `reminder_sent`
+   (was schon rausging) an, beide mit Row Level Security.
+
+2. **Schlüsselpaar erzeugen:**
+
+   ```bash
+   npx web-push generate-vapid-keys
+   ```
+
+   Der Aufruf gibt einen öffentlichen und einen privaten Schlüssel aus. Sie identifizieren den
+   Absender gegenüber den Push-Diensten von Google, Apple und Mozilla.
+
+3. **Schlüssel hinterlegen:** Den öffentlichen Schlüssel in [`.env.production`](.env.production)
+   als `VITE_VAPID_PUBLIC_KEY` eintragen (er landet im Frontend und darf das auch). In Supabase
+   unter `Edge Functions` → `Secrets` kommen `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` und
+   `VAPID_SUBJECT` (eine `mailto:`-Adresse für Rückfragen der Push-Dienste) dazu. Der private
+   Schlüssel gehört ausschließlich dorthin.
+
+4. **Funktion deployen:**
+
+   ```bash
+   supabase functions deploy send-reminders --project-ref <ref>
+   ```
+
+5. **Zeitplan einrichten:** Am Ende von `0004_reminders.sql` steht der fertige `cron.schedule`-
+   Aufruf zum Kopieren — alle fünf Minuten reicht, weil die kürzeste Vorlaufzeit zehn Minuten
+   beträgt.
+
+Danach erscheint in den Einstellungen der Schalter „Auch bei geschlossener App melden“. Ein
+Gerät, das der Browser abgemeldet hat, räumt die Funktion beim nächsten Lauf selbst aus der
+Tabelle. Beim Abmelden aus der App verschwindet das Abo ebenfalls — auf einem gemeinsam
+genutzten Tablet bekommt niemand die Termine des vorherigen Kontos.
+
+Uhrzeiten stehen im Plan ohne Zeitzone, gemeint ist die Ortszeit der Familie. Die Funktion rechnet
+mit `Europe/Berlin`; wer anderswo wohnt, setzt das Secret `REMINDER_TIMEZONE`.
+
 ## Konten und Haushalt
 
 Beim ersten Start nach der Registrierung fragt die App, ob ein **neuer Haushalt** angelegt werden
@@ -156,20 +221,29 @@ ein Tablet, das mehrere in die Hand nehmen.
 ## Aufbau
 
 ```
+public/sw.js            Service Worker: zeigt Erinnerungen an, nimmt Push entgegen
 src/
   data/recipes.ts       Rezeptbibliothek (Zutaten, Schritte, Kinder-Tipps)
   lib/week.ts           Wochenlogik: Kalenderwoche, Datumsrechnung, Bettdienst-Rotation
+  lib/series.ts         Serientermine in die Termine einer Woche ausklappen
   lib/shopping.ts       Einkaufsliste aus dem Wochenplan berechnen und gruppieren
+  lib/notifications.ts  Erlaubnis, Service Worker und Einstellungen je Gerät
   storage/local.ts      Offline-Kopie im Browser, getrennt je Haushalt
   storage/supabase.ts   Login, Haushalte und Datenspeicher inkl. Realtime
+  storage/push.ts       An- und Abmelden beim Push-Dienst des Browsers
   hooks/usePlanner.ts   Laden, Speichern (entprellt) und Wochenwechsel
+  hooks/useReminders.ts Prüft im Minutentakt, welche Erinnerung fällig ist
   components/           Oberfläche: Login, Essensplan, Einkauf, Termine, Rezepte, Einstellungen
 supabase/migrations/    SQL-Schema für Supabase
+supabase/functions/     Edge Functions: Rezepte erzeugen, Erinnerungen verschicken
 scripts/generate-plan.ts  Erzeugt docs/Wochenplan.md aus den Rezeptdaten (`npm run plan`)
 ```
 
-Alle Daten liegen als benannte JSON-Dokumente (`week:2026-07-27`, `settings`). Das hält beide
-Speicher-Backends simpel und erlaubt spätere Erweiterungen ohne Datenbank-Migration.
+Alle Daten liegen als benannte JSON-Dokumente (`week:2026-07-27`, `settings`, `series`). Das hält
+beide Speicher-Backends simpel und erlaubt spätere Erweiterungen ohne Datenbank-Migration.
+Serientermine stehen bewusst in einem eigenen Dokument statt in jeder Woche: eine Änderung wirkt
+damit sofort auf alle Wochen, auch auf die, die noch niemand geöffnet hat. Beim Anzeigen werden
+sie in die jeweilige Woche ausgeklappt; ein einzeln abgesagter Tag steht als Ausnahme in der Serie.
 
 ## Eigene Rezepte ergänzen
 

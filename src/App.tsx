@@ -2,7 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { usePlanner } from './hooks/usePlanner'
 import { useRecipes } from './hooks/useRecipes'
+import { useReminders } from './hooks/useReminders'
 import { clearLocalCache, createLocalCache } from './storage/local'
+import { disablePush } from './storage/push'
+import {
+  loadReminderPrefs,
+  saveReminderPrefs,
+  serviceWorkerRegistration,
+} from './lib/notifications'
+import type { ReminderPrefs } from './lib/notifications'
 import {
   createSupabaseAdapter,
   getHousehold,
@@ -96,16 +104,52 @@ function Planner({ session, householdId }: { session: Session; householdId: stri
   const [tab, setTab] = useState<Tab>('essen')
   const [showSettings, setShowSettings] = useState(false)
 
+  const [reminders, setReminders] = useState<ReminderPrefs>(loadReminderPrefs)
+
   const adapter = useMemo(() => createSupabaseAdapter(householdId), [householdId])
   const cache = useMemo(() => createLocalCache(householdId), [householdId])
 
-  const { weekStart, week, settings, sync, updateWeek, updateSettings, goToWeek, goToToday } =
-    usePlanner(adapter, cache)
+  const {
+    weekStart,
+    week,
+    series,
+    settings,
+    sync,
+    updateWeek,
+    updateSeries,
+    updateSettings,
+    goToWeek,
+    goToToday,
+  } = usePlanner(adapter, cache)
   const library = useRecipes(householdId)
+
+  const updateReminders = useCallback((patch: Partial<ReminderPrefs>) => {
+    setReminders((current) => {
+      const next = { ...current, ...patch }
+      saveReminderPrefs(next)
+      return next
+    })
+  }, [])
+
+  // Der Service Worker zeigt die Erinnerungen an – früh registrieren, damit
+  // er bereitsteht, wenn die erste fällig wird.
+  useEffect(() => {
+    if (reminders.enabled) void serviceWorkerRegistration()
+  }, [reminders.enabled])
+
+  useReminders(adapter, cache, series, settings, reminders)
 
   const handleSignOut = useCallback(() => {
     setShowSettings(false)
-  }, [])
+    // Auf einem gemeinsam genutzten Tablet soll das nächste Konto keine
+    // Erinnerungen des vorherigen bekommen.
+    if (reminders.push) void disablePush().catch(() => undefined)
+    setReminders((current) => {
+      const next = { ...current, enabled: false, push: false }
+      saveReminderPrefs(next)
+      return next
+    })
+  }, [reminders.push])
 
   return (
     <div className="app">
@@ -173,8 +217,10 @@ function Planner({ session, householdId }: { session: Session; householdId: stri
         ) : tab === 'termine' ? (
           <Schedule
             week={week}
+            series={series}
             settings={settings}
             onChange={updateWeek}
+            onSeriesChange={updateSeries}
             onSettingsChange={updateSettings}
           />
         ) : (
@@ -194,6 +240,8 @@ function Planner({ session, householdId }: { session: Session; householdId: stri
         <SettingsSheet
           settings={settings}
           onChange={updateSettings}
+          reminders={reminders}
+          onRemindersChange={updateReminders}
           session={session}
           householdId={householdId}
           onSignOut={handleSignOut}

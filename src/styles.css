@@ -309,9 +309,60 @@ button:focus-visible {
   font-weight: 600;
 }
 
+.event-place {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+
 .event-meta {
   font-size: 0.78rem;
   color: var(--ink-soft);
+}
+
+/* Serie und Erinnerung – kleine Marker neben dem Titel. */
+.event-flag {
+  font-size: 0.75rem;
+  vertical-align: 0.05em;
+}
+
+/* --- Serientermine -------------------------------------------------------- */
+
+.series-box {
+  margin-top: 1rem;
+  padding: 0.75rem 0.9rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.series-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.series-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  border-bottom: 1px dashed var(--line);
+}
+
+.series-list li:last-child {
+  border-bottom: none;
+}
+
+.series-list strong {
+  color: var(--ink);
 }
 
 .no-events {
@@ -610,6 +661,80 @@ button:focus-visible {
 .form-row {
   display: flex;
   gap: 0.75rem;
+}
+
+/* Mehrfachauswahl (Teilnehmer) und Umschalter (Serie) als antippbare Chips. */
+.choice-group {
+  margin: 0;
+  padding: 0;
+  border: none;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.choice-group legend {
+  padding: 0;
+  margin-bottom: 0.35rem;
+}
+
+.choice-group p {
+  margin: 0.4rem 0 0;
+}
+
+.chip-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+/* Zwei Klassen, damit die Regel `.form label` nicht gewinnt: Chips liegen
+   nebeneinander, nicht wie die übrigen Formularfelder untereinander. */
+.chip-choice .chip-toggle {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  margin-bottom: 0;
+  font-size: 0.9rem;
+  color: var(--ink);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.chip-choice .chip-toggle.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.chip-choice .chip-toggle input {
+  /* Der Chip selbst zeigt den Zustand – das Kästchen wäre doppelt gemoppelt. */
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* Schalter mit Text daneben, z. B. „An Termine erinnern“. */
+.switch-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.95rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.switch-row input[type='checkbox'] {
+  width: 1.2rem;
+  height: 1.2rem;
+  accent-color: var(--accent);
+  flex: 0 0 auto;
 }
 
 .form-row > label {

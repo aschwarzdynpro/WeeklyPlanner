@@ -1,5 +1,13 @@
-import { DAYS, DEFAULT_SETTINGS } from '../types'
-import type { DayKey, Parent, Settings, WeekData } from '../types'
+import { ATTENDEES, DAYS, DEFAULT_SETTINGS } from '../types'
+import type {
+  Attendee,
+  CalendarEvent,
+  DayKey,
+  EventSeries,
+  Parent,
+  Settings,
+  WeekData,
+} from '../types'
 import { DEFAULT_WEEK_PLAN } from '../data/recipes'
 
 /** ISO-Datum "YYYY-MM-DD" in lokaler Zeit (nicht UTC – sonst rutscht der Tag). */
@@ -32,6 +40,14 @@ export function addDays(d: Date, n: number): Date {
 export function dateForDay(weekStart: string, day: DayKey): Date {
   const index = DAYS.findIndex((x) => x.key === day)
   return addDays(fromISODate(weekStart), index)
+}
+
+/** Ganzer Zeitpunkt eines Termins: Wochentag plus "HH:MM". */
+export function dateTimeForDay(weekStart: string, day: DayKey, time: string): Date {
+  const date = dateForDay(weekStart, day)
+  const [h, m] = time.split(':').map(Number)
+  date.setHours(Number.isFinite(h) ? h : 0, Number.isFinite(m) ? m : 0, 0, 0)
+  return date
 }
 
 /** Kalenderwoche nach ISO 8601. */
@@ -89,6 +105,79 @@ export function emptyWeek(weekStart: string, settings: Settings = DEFAULT_SETTIN
   }
 }
 
+const isDayKey = (value: unknown): value is DayKey => DAYS.some((d) => d.key === value)
+
+const isTime = (value: unknown): value is string =>
+  typeof value === 'string' && /^\d{1,2}:\d{2}$/.test(value)
+
+const text = (value: unknown): string | undefined => {
+  const trimmed = typeof value === 'string' ? value.trim() : ''
+  return trimmed ? trimmed : undefined
+}
+
+const isISODate = (value: unknown): value is string =>
+  typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+
+/**
+ * Teilnehmer einlesen. Bis Version 1 stand hier ein einzelner Wert, wobei
+ * "alle" für den ganzen Haushalt stand – das ist heute die leere Liste.
+ */
+function normalizeAttendees(raw: unknown): Attendee[] {
+  if (Array.isArray(raw)) return ATTENDEES.filter((a) => raw.includes(a))
+  if (typeof raw === 'string' && (ATTENDEES as string[]).includes(raw)) return [raw as Attendee]
+  return []
+}
+
+function normalizeMinutes(raw: unknown): number | undefined {
+  return typeof raw === 'number' && raw > 0 ? Math.round(raw) : undefined
+}
+
+/** Gemeinsame Felder von Einzeltermin und Serie. */
+function normalizeCommon(data: Record<string, unknown>) {
+  return {
+    day: isDayKey(data.day) ? data.day : ('mo' as DayKey),
+    start: isTime(data.start) ? data.start : '12:00',
+    end: isTime(data.end) ? data.end : undefined,
+    title: text(data.title) ?? 'Termin',
+    who: normalizeAttendees(data.who),
+    location: text(data.location),
+    note: text(data.note),
+    remindMinutes: normalizeMinutes(data.remindMinutes),
+  }
+}
+
+export function normalizeEvents(raw: unknown): CalendarEvent[] {
+  if (!Array.isArray(raw)) return []
+  return raw.flatMap((entry) => {
+    if (!entry || typeof entry !== 'object') return []
+    const data = entry as Record<string, unknown>
+    const id = text(data.id)
+    if (!id) return []
+    return [{ id, ...normalizeCommon(data) }]
+  })
+}
+
+export function normalizeSeries(raw: unknown): EventSeries[] {
+  if (!Array.isArray(raw)) return []
+  return raw.flatMap((entry) => {
+    if (!entry || typeof entry !== 'object') return []
+    const data = entry as Record<string, unknown>
+    const id = text(data.id)
+    if (!id || !isISODate(data.from)) return []
+    const everyWeeks = typeof data.everyWeeks === 'number' ? Math.round(data.everyWeeks) : 1
+    return [
+      {
+        id,
+        ...normalizeCommon(data),
+        everyWeeks: everyWeeks >= 1 ? everyWeeks : 1,
+        from: data.from,
+        until: isISODate(data.until) ? data.until : undefined,
+        skipped: Array.isArray(data.skipped) ? data.skipped.filter(isISODate) : [],
+      },
+    ]
+  })
+}
+
 /** Fehlende Felder ergänzen – schützt vor alten/kaputten gespeicherten Daten. */
 export function normalizeWeek(raw: unknown, weekStart: string, settings: Settings): WeekData {
   const base = emptyWeek(weekStart, settings)
@@ -108,7 +197,7 @@ export function normalizeWeek(raw: unknown, weekStart: string, settings: Setting
     weekStart,
     meals,
     bedtime,
-    events: Array.isArray(data.events) ? data.events : [],
+    events: normalizeEvents(data.events),
     shopping: Array.isArray(data.shopping) ? data.shopping : [],
     updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : base.updatedAt,
   }
