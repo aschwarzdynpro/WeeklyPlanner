@@ -251,3 +251,8 @@ In `src/data/recipes.ts` einen weiteren Eintrag anlegen — wichtig sind eine ei
 `servings` (auf welche Portionszahl sich die Mengen beziehen) und die `cat`-Angabe je Zutat,
 damit die Zutat in der Einkaufsliste in der richtigen Abteilung landet. Zutaten wie Salz oder Öl
 bekommen `pantry: true` und erscheinen dann unter „Vorrat prüfen“ statt mit einer Menge.
+
+## Wie es weitergehen könnte
+
+Ideen für den weiteren Ausbau — nach Nutzen im Alltag sortiert, mit grober Größe und dem Hinweis,
+was davon eine Datenbank-Migration braucht — stehen in [`docs/Roadmap.md`](docs/Roadmap.md).
