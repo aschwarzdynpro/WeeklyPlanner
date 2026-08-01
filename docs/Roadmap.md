@@ -79,6 +79,11 @@ wo Tippen am Handy wirklich lästig ist.
   der schnellste Weg, den es gibt. Wichtig: Ergebnis vor dem Speichern zeigen, nicht blind
   übernehmen.
 
+- **Cookidoo anbinden** (L, Migration für die Zugangsdaten)
+  Rezeptauswahl aus dem eigenen Cookidoo-Bestand und „an den Thermomix schicken“. Befund und
+  Vorgehen stehen in [`docs/Cookidoo.md`](Cookidoo.md) — inklusive der Grenzen, die wir dabei
+  einhalten, und des Abbruchkriteriums nach dem Machbarkeitsnachweis.
+
 - **Rezept aus einem Link übernehmen** (M, keine Migration)
   Rezeptseiten sind voller Werbung und Lebensgeschichten. Adresse einwerfen, Zutaten und Schritte
   im Format der Bibliothek herausbekommen — inklusive der Schreibweisen, auf die die

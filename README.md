@@ -317,3 +317,6 @@ bekommen `pantry: true` und erscheinen dann unter „Vorrat prüfen“ statt mit
 
 Ideen für den weiteren Ausbau — nach Nutzen im Alltag sortiert, mit grober Größe und dem Hinweis,
 was davon eine Datenbank-Migration braucht — stehen in [`docs/Roadmap.md`](docs/Roadmap.md).
+
+Für die geplante Cookidoo-Anbindung (Rezeptauswahl aus dem eigenen Bestand, Gerichte an den
+Thermomix schicken) gibt es ein eigenes Dokument: [`docs/Cookidoo.md`](docs/Cookidoo.md).
