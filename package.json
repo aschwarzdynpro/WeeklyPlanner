@@ -12,7 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "icons": "esbuild scripts/generate-icons.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/icons.mjs && node node_modules/.cache/icons.mjs",
-    "cookidoo:spike": "node scripts/cookidoo-spike.mjs",
+    "cookidoo:spike": "esbuild supabase/functions/cookidoo/client.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/cookidoo-client.mjs && node scripts/cookidoo-spike.mjs",
     "plan": "esbuild scripts/generate-plan.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/plan.mjs && node node_modules/.cache/plan.mjs > docs/Wochenplan.md"
   },
   "dependencies": {

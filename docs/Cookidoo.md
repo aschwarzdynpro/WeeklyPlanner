@@ -170,16 +170,34 @@ in Schritt 1 — was hier gebraucht wird, ist nur die Antwort auf eine Frage.
 Aktionen: `status` (Anmeldung und Abo), `collections`, `search`, `recipe`, `week`, `plan`,
 `unplan`.
 
-**So führt ihr ihn aus:**
+**So führt ihr ihn aus — Weg 1, direkt vom eigenen Rechner:**
 
 ```bash
-supabase functions deploy cookidoo --project-ref <ref>
+npm install          # einmalig
 npm run cookidoo:spike
 ```
 
-Das Skript fragt nacheinander nach dem Konto der App und dem von Cookidoo, meldet sich an, listet
-die Sammlungen, sucht ein Rezept und legt es auf Wunsch auf einen Tag. Passwörter werden bei der
-Eingabe nicht angezeigt und landen weder in einer Datei noch in der Shell-History.
+Kein Supabase nötig, nichts zu deployen. Das Skript bündelt den Client, fragt nach dem
+Cookidoo-Konto und läuft die Schritte durch: anmelden, Abo prüfen, Sammlungen holen, suchen, ein
+Rezept auf einen Tag legen. So beantwortet ihr die eigentliche Frage in einem Rutsch.
+
+**Weg 2, über die Edge Function** — prüft zusätzlich genau den Pfad, den die App später nimmt:
+
+```bash
+supabase functions deploy cookidoo --project-ref <ref>
+npm run cookidoo:spike -- --remote
+```
+
+Hier fragt das Skript zuerst nach dem Konto der App (für den Aufruf der Funktion) und danach nach
+dem von Cookidoo.
+
+Passwörter werden bei der Eingabe nicht angezeigt und landen weder in einer Datei noch in der
+Shell-History. Wer keine Lust auf Tippen hat, kann `COOKIDOO_EMAIL` und `APP_EMAIL` als
+Umgebungsvariable setzen — die Passwörter bleiben Eingabe.
+
+**Wenn Weg 1 klappt und Weg 2 nicht,** liegt es vermutlich daran, dass Cookidoo hinter Cloudflare
+sitzt: Ein Anschluss von zu Hause wird anders behandelt als ein Rechenzentrum. Das wäre ein
+Ergebnis, kein Fehler — dann bräuchte die Anbindung einen anderen Weg nach draußen.
 
 **Danach die entscheidende Prüfung:** Am Thermomix nachsehen, ob das Rezept unter „Mein
 Wochenplan" auftaucht.
@@ -188,9 +206,14 @@ Wochenplan" auftaucht.
 bauen stattdessen die einfache Verlinkung (Feld `cookidooUrl` am Rezept, Knopf „In Cookidoo
 öffnen"). Das kostet einen Abend und hat keinerlei Risiken.
 
-**Was schon geprüft ist:** Weiterleitungskette, Cookie-Speicher und das Auslesen der `requestId`
-laufen nachweislich gegen die echte Seite. Ungeprüft bleibt alles ab dem Abschicken der
-Zugangsdaten — dafür braucht es ein Konto.
+**Was schon geprüft ist:** Der ganze Ablauf läuft gegen den echten Dienst — Weiterleitungskette,
+Cookie-Speicher, Auslesen der `requestId` und auch das Abschicken der Zugangsdaten. Mit einem
+erfundenen Konto endet er dort, wo er soll: Cookidoo setzt keine Sitzungs-Cookies, und das Skript
+meldet das im Klartext, statt abzustürzen.
+
+Ungeprüft bleibt damit nur der Fall **richtiger** Zugangsdaten: ob danach wirklich eine Sitzung
+entsteht, ob Sammlungen und Suche etwas liefern und ob das Rezept am Gerät ankommt. Dafür braucht
+es ein Konto mit Abo.
 
 ### Schritt 1 — Konto verbinden
 
