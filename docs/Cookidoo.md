@@ -34,6 +34,29 @@ Aus `cookidoo_api/const.py`, gekürzt auf das für uns Relevante:
 | Zutaten eines Rezepts auf die Einkaufsliste | `shopping/{sprache}/recipes/add` |
 | Abo-Status | `ownership/subscriptions` |
 
+### Der Anmeldeflow, nachgemessen
+
+Es gibt kein Bearer-Token; angemeldet wird über den Browser-Ablauf, und die Sitzung steckt danach
+in Cookies. Die Kette ist am 01.08.2026 gegen die echte Seite nachgemessen worden (nur die
+öffentlichen Schritte, ohne Zugangsdaten):
+
+```
+GET  cookidoo.de/profile/de-DE/login?redirectAfterLogin=…   → 302
+     cookidoo.de/oauth2/start                                → 302
+     ciam.prod.cookidoo.vorwerk-digital.com/authz-srv/authz  → 302
+     eu.login.vorwerk.com/ciam/login                         → 200
+```
+
+Auf der Seite steht ein Formular mit genau drei Feldern — `requestId` (versteckt), `username`,
+`password` — und dem Ziel `https://ciam.prod.cookidoo.vorwerk-digital.com/login-srv/login`. Das
+deckt sich mit der Referenzimplementierung. Eine Captcha- oder Turnstile-Hürde ist auf der Seite
+nicht zu sehen; Cloudflare setzt lediglich ein `__cf_bm`-Cookie.
+
+Für uns heißt das zweierlei: Der Ablauf lässt sich nachbauen, aber `fetch` allein reicht nicht —
+es braucht einen eigenen Cookie-Speicher und Weiterleitungen von Hand, weil `fetch` unterwegs
+gesetzte Cookies nicht aufhebt. Genau das tut
+[`supabase/functions/cookidoo/client.ts`](../supabase/functions/cookidoo/client.ts).
+
 ### „An den Thermomix schicken" hat einen Weg
 
 Es gibt keine Verbindung zum Gerät selbst — und es braucht auch keine. Der TM6 meldet sich am
@@ -44,17 +67,22 @@ taucht nach der nächsten Synchronisierung auf dem Gerät auf.
 Das heißt zugleich: Es ist kein sofortiges „Senden", sondern ein Eintrag, den das Gerät abholt.
 Die Rückmeldung in der App muss das ehrlich benennen.
 
-### Was nicht geht: Katalogsuche
+### Es gibt doch eine Suche
 
-In den rekonstruierten Endpunkten **gibt es keine Suche**. Wer den gesamten Cookidoo-Katalog
-durchsuchbar machen will, muss die Website scrapen — das tut etwa
-[`cookidoo-scraper`](https://github.com/tobim-dev/cookidoo-scraper). Das ist der Teil, der
-am ehesten bricht und ToS-technisch am deutlichsten außerhalb liegt.
+Ein erster Blick nur in die Konstanten der Referenzimplementierung legte nahe, dass es keine
+Suche gibt. Das war falsch: Sie wird im Code zusammengesetzt statt als Konstante hinterlegt.
 
-**Konsequenz für die Rezeptauswahl:** Sie speist sich aus dem, was die Familie bei Cookidoo ohnehin
-schon gesammelt hat — Kochbücher, Sammlungen, eigene Listen — plus „Rezept per Link hinzufügen".
-Das ist nicht nur die sichere Variante, sondern vermutlich auch die brauchbarere: kuratiert statt
-80.000 Treffer.
+```
+GET https://{host}/search/{sprache}?query=…&tmv=TM6&totalTime=…&pageSize=…
+```
+
+Mit Filtern für Zutaten, ausgeschlossene Zutaten, Bewertung, Schwierigkeit, Zubereitungs- und
+Gesamtzeit, Portionen, Kategorien, Seitenzahl — und `tmv` für den **Gerätetyp**, damit nur
+Rezepte kommen, die der eigene Thermomix auch kann.
+
+**Konsequenz für die Rezeptauswahl:** Sie kann sich aus beidem speisen — der Suche über den
+Katalog und den eigenen Sammlungen. Wir fangen mit den eigenen Sammlungen an (kuratiert, klein,
+sofort brauchbar) und legen die Suche daneben.
 
 ### Grenzen, die wir einhalten
 
@@ -132,20 +160,37 @@ Familie hat trotzdem eine Liste.
 
 ## Vorgehen
 
-### Schritt 0 — Machbarkeitsnachweis (zuerst, ohne Oberfläche)
+### Schritt 0 — Machbarkeitsnachweis ✅ gebaut, wartet auf euren Lauf
 
-Eine Edge Function mit genau drei Aktionen, aufrufbar aus der Konsole:
+[`supabase/functions/cookidoo`](../supabase/functions/cookidoo/) ist da. Die Funktion speichert
+**nichts**: Zugangsdaten kommen bei jedem Aufruf mit, gelten für die Dauer des Aufrufs und werden
+danach vergessen. Weder Datenbank noch Protokoll sehen sie. Die verschlüsselte Ablage kommt erst
+in Schritt 1 — was hier gebraucht wird, ist nur die Antwort auf eine Frage.
 
-1. `link` — Anmeldung mit E-Mail und Passwort, Token holen, Abo-Status lesen.
-2. `collections` — die eigenen Sammlungen und Kochbücher auflisten.
-3. `plan` — ein Rezept auf ein Datum in „Mein Wochenplan" legen.
+Aktionen: `status` (Anmeldung und Abo), `collections`, `search`, `recipe`, `week`, `plan`,
+`unplan`.
 
-Damit ist die einzige Frage beantwortet, die sich nicht am Schreibtisch klären lässt: **Lässt sich
-der Anmeldeflow in Deno nachbauen, und erscheint das Rezept danach wirklich am Gerät?**
+**So führt ihr ihn aus:**
 
-**Abbruchkriterium:** Klappt der Login nicht oder kommt am TM6 nichts an, hören wir hier auf und
+```bash
+supabase functions deploy cookidoo --project-ref <ref>
+npm run cookidoo:spike
+```
+
+Das Skript fragt nacheinander nach dem Konto der App und dem von Cookidoo, meldet sich an, listet
+die Sammlungen, sucht ein Rezept und legt es auf Wunsch auf einen Tag. Passwörter werden bei der
+Eingabe nicht angezeigt und landen weder in einer Datei noch in der Shell-History.
+
+**Danach die entscheidende Prüfung:** Am Thermomix nachsehen, ob das Rezept unter „Mein
+Wochenplan" auftaucht.
+
+**Abbruchkriterium:** Scheitert die Anmeldung oder kommt am Gerät nichts an, hören wir hier auf und
 bauen stattdessen die einfache Verlinkung (Feld `cookidooUrl` am Rezept, Knopf „In Cookidoo
 öffnen"). Das kostet einen Abend und hat keinerlei Risiken.
+
+**Was schon geprüft ist:** Weiterleitungskette, Cookie-Speicher und das Auslesen der `requestId`
+laufen nachweislich gegen die echte Seite. Ungeprüft bleibt alles ab dem Abschicken der
+Zugangsdaten — dafür braucht es ein Konto.
 
 ### Schritt 1 — Konto verbinden
 
@@ -188,7 +233,7 @@ Die Positionen aus Cookidoos Einkaufsliste als eigene Gruppe in unserer Liste.
 
 | Schritt | Größe |
 | --- | --- |
-| 0 — Machbarkeitsnachweis | ein Abend (plus euer Test) |
+| 0 — Machbarkeitsnachweis | ✅ gebaut, euer Lauf steht aus |
 | 1 — Konto verbinden | ein Abend |
 | 2 — Rezeptauswahl | ein Wochenende |
 | 3 — Essensplan | ein Abend |
