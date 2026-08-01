@@ -85,12 +85,13 @@ export function ShoppingList({ week, settings, recipeById, onChange }: Props) {
         </div>
       </div>
 
-      {groups.map((group) => (
-        <div key={group.cat} className="shop-group">
+      <div className="shop-columns">
+        {groups.map((group) => (
+          <div key={group.cat} className="shop-group">
           <h3>{group.cat}</h3>
           <ul className="shop-list">
             {group.items.map((item) => (
-              <li key={item.id} className={item.checked ? 'checked' : ''}>
+                <li key={item.id} className={item.checked ? 'checked' : ''}>
                 <label>
                   <input type="checkbox" checked={item.checked} onChange={() => toggle(item.id)} />
                   <span className="shop-name">{item.name}</span>
@@ -105,11 +106,12 @@ export function ShoppingList({ week, settings, recipeById, onChange }: Props) {
                     ✕
                   </button>
                 )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+                </li>
+                ))}
+            </ul>
+          </div>
+        ))}
+      </div>
 
       <form className="add-row" onSubmit={add}>
         <input

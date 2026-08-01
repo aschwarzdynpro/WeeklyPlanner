@@ -256,7 +256,9 @@ function Planner({ session, householdId }: { session: Session; householdId: stri
           </button>
           <h1 className="topbar-title">{TABS.find((t) => t.key === tab)?.label}</h1>
 
-          {tab !== 'termine' && (
+          {/* Nur Essensplan und Einkauf hängen an einer Woche; der Kalender
+              hat seine eigene Navigation, die Rezepte gar keine. */}
+          {(tab === 'essen' || tab === 'einkauf') && (
             <div className="topbar-week">
               <button
                 className="icon-btn"

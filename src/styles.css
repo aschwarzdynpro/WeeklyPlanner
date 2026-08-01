@@ -178,8 +178,23 @@ button:focus-visible {
   gap: 0.75rem;
 }
 
+/* Zwei Spalten, sobald Platz ist: 65 Zeilen untereinander sind eine
+   Scrollstrecke, bei der man die Abteilungen aus den Augen verliert. */
+.shop-columns {
+  columns: 2;
+  column-gap: 1.25rem;
+}
+
+@media (max-width: 720px) {
+  .shop-columns {
+    columns: 1;
+  }
+}
+
 .shop-group {
   margin-bottom: 1.25rem;
+  /* Eine Abteilung soll nicht mitten in der Liste umbrechen. */
+  break-inside: avoid;
 }
 
 .shop-group h3 {
@@ -965,6 +980,18 @@ button:focus-visible {
   min-height: 0;
   overflow-y: auto;
   padding: 1rem clamp(0.75rem, 2vw, 1.5rem) 2rem;
+}
+
+/*
+ * Lesebreite: Die alte Hülle war auf 1040px begrenzt, die neue füllt das
+ * Fenster. Ohne Begrenzung zieht sich eine Einkaufszeile über 1400px --
+ * viel Weg für ein Kästchen und eine Menge. Der Kalender ist ausgenommen,
+ * der braucht jede Spalte.
+ */
+.pane-body:not(.flush) > * {
+  display: block;
+  max-width: 66rem;
+  margin-inline: auto;
 }
 
 /* Der Kalender bringt sein eigenes Scrollen mit. */
