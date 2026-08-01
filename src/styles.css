@@ -5,6 +5,9 @@
   --ink: #2c2622;
   --ink-soft: #6f645c;
   --line: #e6dbcd;
+  --line-soft: #f0e9df;
+  --chrome: #f6f3ef;
+  --chrome-2: #ece7e0;
   --accent: #d97b3a;
   --accent-soft: #fdeee2;
   --weekend: #fff8ec;
@@ -21,6 +24,9 @@
     --ink: #f0ebe6;
     --ink-soft: #a89f97;
     --line: #383140;
+    --line-soft: #2c2733;
+    --chrome: #1d1b21;
+    --chrome-2: #262230;
     --accent: #f0a35f;
     --accent-soft: #3a2a1c;
     --weekend: #26212b;
@@ -72,112 +78,6 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
-.app {
-  max-width: 1040px;
-  margin: 0 auto;
-  padding: 0 clamp(0.75rem, 3vw, 1.5rem) 3rem;
-}
-
-/* --- Kopfbereich ---------------------------------------------------------- */
-
-.app-head {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  padding-top: 0.75rem;
-  background: linear-gradient(var(--bg) 85%, transparent);
-  backdrop-filter: blur(6px);
-}
-
-.head-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.head-top h1 {
-  font-size: clamp(1.15rem, 4vw, 1.5rem);
-}
-
-.week-nav {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  margin: 0.6rem 0;
-}
-
-.week-label {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 12rem;
-  padding: 0.35rem 0.9rem;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  line-height: 1.2;
-}
-
-.week-label span {
-  font-size: 0.8rem;
-  color: var(--ink-soft);
-}
-
-.tabs {
-  display: flex;
-  gap: 0.35rem;
-  padding-bottom: 0.75rem;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.tabs::-webkit-scrollbar {
-  display: none;
-}
-
-.tab {
-  flex: 1 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  padding: 0.5rem 0.85rem;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  white-space: nowrap;
-}
-
-.tab.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-}
-
-@media (max-width: 420px) {
-  .tab-label {
-    font-size: 0.85rem;
-  }
-}
-
-.icon-btn {
-  display: inline-grid;
-  place-items: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  font-size: 1.1rem;
-}
-
-.icon-btn.small {
-  width: 1.75rem;
-  height: 1.75rem;
-  font-size: 0.85rem;
-}
 
 /* --- Karten --------------------------------------------------------------- */
 
@@ -260,128 +160,6 @@ button:focus-visible {
 .meal-card footer {
   display: flex;
   justify-content: flex-end;
-}
-
-/* --- Termine -------------------------------------------------------------- */
-
-.event-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.event {
-  display: flex;
-  gap: 0.6rem;
-  width: 100%;
-  padding: 0.45rem 0.55rem;
-  text-align: left;
-  background: var(--surface-2);
-  border: 1px solid transparent;
-  border-radius: 10px;
-}
-
-.event:hover {
-  border-color: var(--accent);
-}
-
-.event-time {
-  flex: 0 0 auto;
-  font-variant-numeric: tabular-nums;
-  font-size: 0.8rem;
-  color: var(--ink-soft);
-  padding-top: 0.1rem;
-}
-
-.event-body strong {
-  display: block;
-  font-weight: 600;
-}
-
-.event-place {
-  display: block;
-  font-size: 0.78rem;
-  color: var(--ink-soft);
-}
-
-.event-meta {
-  font-size: 0.78rem;
-  color: var(--ink-soft);
-}
-
-/* Serie und Erinnerung – kleine Marker neben dem Titel. */
-.event-flag {
-  font-size: 0.75rem;
-  vertical-align: 0.05em;
-}
-
-/* --- Serientermine -------------------------------------------------------- */
-
-.series-box {
-  margin-top: 1rem;
-  padding: 0.75rem 0.9rem;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-}
-
-.series-list {
-  list-style: none;
-  margin: 0.5rem 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.series-list li {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.4rem 0;
-  font-size: 0.85rem;
-  color: var(--ink-soft);
-  border-bottom: 1px dashed var(--line);
-}
-
-.series-list li:last-child {
-  border-bottom: none;
-}
-
-.series-list strong {
-  color: var(--ink);
-}
-
-.no-events {
-  font-size: 0.85rem;
-  color: var(--ink-soft);
-  padding: 0.2rem 0.1rem;
-}
-
-/* Rahmen- und Hintergrundfarbe setzt die Person, siehe Schedule.tsx. */
-.bedtime {
-  color: var(--ink);
-  display: flex;
-  gap: 0.6rem;
-  align-items: center;
-  width: 100%;
-  padding: 0.5rem 0.55rem;
-  text-align: left;
-  border: 1px dashed;
-  border-radius: 10px;
-}
-
-.bedtime-body {
-  font-size: 0.9rem;
-}
-
-.add-event {
-  align-self: flex-start;
 }
 
 /* --- Einkaufsliste -------------------------------------------------------- */
@@ -768,9 +546,6 @@ button:focus-visible {
 
 /* --- Kleinkram ------------------------------------------------------------ */
 
-.app-main {
-  padding-top: 0.25rem;
-}
 
 .section-intro {
   margin: 0 0 1rem;
@@ -799,20 +574,11 @@ button:focus-visible {
   padding: 2rem 1rem;
 }
 
-.app-foot {
-  margin-top: 2rem;
-  text-align: center;
-  font-size: 0.78rem;
-  color: var(--ink-soft);
-}
 
 .sync-fehler {
   color: #c25757;
 }
 
-.rotation-hint {
-  margin: -0.4rem 0 1rem;
-}
 
 /* --- Anmelde- und Einrichtungsbildschirme --------------------------------- */
 
@@ -1024,45 +790,908 @@ button:focus-visible {
   box-shadow: 0 0 0 2px var(--ink-soft);
 }
 
-/* --- Zeiträume ------------------------------------------------------------ */
 
-.span-bar {
+/* ===========================================================================
+   Fensteraufbau: Seitenleiste, Befehlsleiste, Inhalt
+   ---------------------------------------------------------------------------
+   Der Aufbau folgt dem, was man aus Outlook kennt: links die Navigation mit
+   dem kleinen Monatskalender, oben eine Leiste mit den Aktionen der aktuellen
+   Ansicht, rechts daneben die Fläche. Die Farben bleiben die der App.
+   =========================================================================== */
+
+.shell {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  height: 100dvh;
+  background: var(--bg);
+}
+
+.side {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem 0.6rem;
+  background: var(--chrome);
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+}
+
+.side-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.3rem 0.25rem;
+}
+
+.side-logo {
+  font-size: 1.15rem;
+}
+
+.side-title {
+  font-weight: 650;
+}
+
+.side-close {
+  margin-left: auto;
+  display: none;
+}
+
+.side-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.side-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.92rem;
+}
+
+.side-item:hover {
+  background: var(--chrome-2);
+}
+
+.side-item.on {
+  background: var(--surface);
+  font-weight: 650;
+  /* Der Streifen links markiert den Bereich, ohne die Zeile zu verschieben. */
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.side-foot {
+  margin-top: auto;
+}
+
+.side-section {
+  padding: 0 0.3rem;
+}
+
+.side-section h3 {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  margin-bottom: 0.4rem;
+}
+
+.side-people {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.side-people .switch-row {
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.side-scrim {
+  display: none;
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.9rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.topbar-title {
+  font-size: 1.05rem;
+  font-weight: 650;
+}
+
+.topbar-menu {
+  display: none;
+}
+
+.topbar-week {
+  display: flex;
   align-items: center;
   gap: 0.4rem;
-  margin-bottom: 0.75rem;
+  margin-left: auto;
 }
 
-.span-chip {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.4rem;
-  padding: 0.35rem 0.7rem;
+.week-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 11rem;
+  padding: 0.2rem 0.8rem;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 999px;
-  font-size: 0.85rem;
+  border-radius: 10px;
+  line-height: 1.2;
 }
 
-.span-chip:hover {
-  border-color: var(--accent);
-}
-
-.span-range {
+.week-label span {
   font-size: 0.78rem;
   color: var(--ink-soft);
 }
 
-/* Der Streifen im Tag zeigt, dass der Zeitraum auch diesen Tag betrifft. */
-.day-span {
-  padding: 0.3rem 0.5rem;
-  font-size: 0.8rem;
-  background: var(--surface-2);
-  border-left: 3px solid var(--accent);
-  border-radius: 6px;
+.topbar-sync {
+  margin-left: auto;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
 }
 
-.span-emoji-field {
+.topbar-week + .topbar-sync {
+  margin-left: 0.75rem;
+}
+
+.topbar-sync.offline {
+  color: #c25757;
+}
+
+.pane-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1rem clamp(0.75rem, 2vw, 1.5rem) 2rem;
+}
+
+/* Der Kalender bringt sein eigenes Scrollen mit. */
+.pane-body.flush {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+}
+
+/* --- Kleiner Monatskalender ----------------------------------------------- */
+
+.mini {
+  padding: 0 0.2rem;
+}
+
+.mini-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.3rem;
+  font-size: 0.9rem;
+}
+
+.mini-nav {
+  display: flex;
+  gap: 0.15rem;
+}
+
+.mini-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+  table-layout: fixed;
+}
+
+.mini-grid th {
+  font-weight: 500;
+  color: var(--ink-soft);
+  padding-bottom: 0.2rem;
+}
+
+.mini-week {
+  color: var(--ink-soft);
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+.mini-grid tr.on .mini-week,
+.mini-grid tr.on .mini-day {
+  background: var(--accent-soft);
+}
+
+.mini-grid tr.on .mini-week {
+  border-radius: 6px 0 0 6px;
+}
+
+.mini-day {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  font-variant-numeric: tabular-nums;
+}
+
+.mini-day:hover {
+  background: var(--chrome-2);
+}
+
+.mini-day.outside {
+  color: var(--ink-soft);
+  opacity: 0.5;
+}
+
+.mini-day.selected {
+  outline: 1px solid var(--accent);
+}
+
+.mini-day.today,
+.mini-grid tr.on .mini-day.today {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* Der Punkt zeigt, dass an dem Tag etwas steht. */
+.mini-day.marked::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.mini-day.today.marked::after {
+  background: #fff;
+}
+
+/* --- Kalender: Befehlsleiste ---------------------------------------------- */
+
+.cal {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.cal-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: 0.5rem;
+}
+
+.cal-title {
+  font-size: 1rem;
+  font-weight: 650;
+  margin-right: auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cal-views {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--chrome-2);
+  border-radius: 9px;
+}
+
+.cal-view {
+  padding: 0.35rem 0.7rem;
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+
+.cal-view.on {
+  background: var(--surface);
+  font-weight: 650;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 12%);
+}
+
+.cal-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0.9rem;
+  background: var(--chrome);
+  border-bottom: 1px solid var(--line);
+}
+
+.cal-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+/* --- Zeitraster (Tag, Arbeitswoche, Woche) -------------------------------- */
+
+.tg {
+  --gutter: 3.5rem;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  background: var(--surface);
+}
+
+.tg-head,
+.tg-allday,
+.tg-body {
+  display: grid;
+  grid-template-columns: var(--gutter) repeat(var(--cols), minmax(0, 1fr));
+}
+
+.tg-head {
+  border-bottom: 1px solid var(--line);
+}
+
+.tg-dayhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.2rem;
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--line-soft);
+}
+
+.tg-weekday {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.tg-daynum {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.tg-dayhead.today .tg-daynum {
+  display: grid;
+  place-items: center;
+  min-width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+}
+
+.tg-allday {
+  min-height: 1.9rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--chrome);
+}
+
+.tg-gutter-label {
+  font-size: 0.68rem;
+  color: var(--ink-soft);
+  text-align: right;
+  padding: 0.3rem 0.4rem 0 0;
+}
+
+.tg-allday-cell {
+  padding: 2px;
+  border-left: 1px solid var(--line-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tg-allday-cell.today,
+.tg-col.today {
+  background: var(--accent-soft);
+}
+
+.tg-span {
+  padding: 0.15rem 0.4rem;
+  text-align: left;
+  font-size: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tg-body {
+  overflow-y: auto;
+  position: relative;
+}
+
+.tg-hours {
+  position: relative;
+  background: var(--surface);
+}
+
+.tg-hour {
+  position: relative;
+  border-top: 1px solid transparent;
+}
+
+.tg-hour span {
+  position: absolute;
+  top: -0.65em;
+  right: 0.4rem;
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+  background: var(--surface);
+  padding: 0 0.15rem;
+}
+
+.tg-col {
+  position: relative;
+  border-left: 1px solid var(--line-soft);
+}
+
+.tg-slot {
+  border-top: 1px solid var(--line-soft);
+}
+
+/* Jede zweite Linie etwas kräftiger – so bleibt die Stunde ablesbar. */
+.tg-slot:nth-child(odd) {
+  border-top-color: var(--line);
+}
+
+.tg-event {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0.15rem 0.35rem;
+  text-align: left;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 8%);
+  font-size: 0.78rem;
+  line-height: 1.25;
+}
+
+.tg-event:hover {
+  box-shadow: 0 2px 6px rgb(0 0 0 / 16%);
+}
+
+.tg-event.short {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+
+.tg-event.short .tg-event-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.tg-event.short .tg-event-time {
+  flex: 0 1 auto;
+  overflow: hidden;
+}
+
+.tg-event-time {
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.tg-event-title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tg-event-place {
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tg-flag {
+  font-size: 0.7rem;
+}
+
+.tg-bedtime {
+  position: absolute;
+  left: 2px;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  padding: 0 0.4rem;
+  font-size: 0.75rem;
+  text-align: left;
+  border: 1px dashed;
+  border-radius: 4px;
+}
+
+.tg-now {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 2px solid #c2554b;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.tg-now-dot {
+  position: absolute;
+  left: -4px;
+  top: -5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #c2554b;
+}
+
+.tg-now-label {
+  position: absolute;
+  right: 2px;
+  top: -0.85em;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #c2554b;
+  background: var(--surface);
+  padding: 0 0.2rem;
+}
+
+/* --- Monatsansicht -------------------------------------------------------- */
+
+.mg {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  background: var(--surface);
+}
+
+.mg-head {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-bottom: 1px solid var(--line);
+}
+
+.mg-weekday {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  border-left: 1px solid var(--line-soft);
+}
+
+.mg-weekday-short {
+  display: none;
+}
+
+.mg-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  overflow-y: auto;
+}
+
+.mg-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 5.5rem;
+  padding: 2px 3px 4px;
+  border-left: 1px solid var(--line-soft);
+  border-top: 1px solid var(--line-soft);
+  overflow: hidden;
+}
+
+.mg-cell.weekend {
+  background: var(--weekend);
+}
+
+.mg-cell.outside {
+  background: var(--chrome);
+  color: var(--ink-soft);
+}
+
+.mg-cell.today {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.mg-cell-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mg-daynum {
+  padding: 0.1rem 0.35rem;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.mg-cell.today .mg-daynum {
+  background: var(--accent);
+  color: #fff;
+}
+
+.mg-add {
+  padding: 0 0.3rem;
+  background: transparent;
+  border: none;
+  color: var(--ink-soft);
+  opacity: 0;
+}
+
+.mg-cell:hover .mg-add {
+  opacity: 1;
+}
+
+.mg-chip,
+.mg-span,
+.mg-more,
+.mg-bedtime {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: 100%;
+  padding: 0.1rem 0.3rem;
+  text-align: left;
+  font-size: 0.75rem;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.mg-chip:hover,
+.mg-span:hover {
+  background: var(--chrome-2);
+}
+
+.mg-dot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.mg-chip-time {
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.mg-chip-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mg-more {
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+}
+
+.mg-bedtime {
+  margin-top: auto;
+  color: var(--ink-soft);
+  font-size: 0.7rem;
+}
+
+/* --- Agenda --------------------------------------------------------------- */
+
+.agenda {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.5rem clamp(0.5rem, 2vw, 1.5rem) 2rem;
+  background: var(--surface);
+}
+
+.agenda-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.agenda-day {
+  border-bottom: 1px solid var(--line);
+  padding: 0.5rem 0;
+}
+
+.agenda-day header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.2rem 0.3rem;
+}
+
+.agenda-date {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.agenda-weekday {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+.agenda-day.today .agenda-date,
+.agenda-day.today .agenda-weekday {
+  color: var(--accent);
+}
+
+.agenda-day ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.agenda-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.4rem 0.3rem;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+}
+
+button.agenda-row:hover {
+  background: var(--chrome);
+}
+
+.agenda-time {
   flex: 0 0 5.5rem;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  padding-top: 0.1rem;
+}
+
+.agenda-bar {
+  flex: 0 0 auto;
+  width: 3px;
+  align-self: stretch;
+  border-radius: 2px;
+}
+
+.agenda-body strong {
+  display: block;
+  font-weight: 600;
+}
+
+.agenda-meta {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+/* --- Schmale Bildschirme -------------------------------------------------- */
+
+@media (max-width: 900px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .side {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 40;
+    width: 17rem;
+    transform: translateX(-100%);
+    transition: transform 0.18s ease;
+    box-shadow: var(--shadow);
+  }
+
+  .side.open {
+    transform: none;
+  }
+
+  .side-close,
+  .topbar-menu {
+    display: inline-grid;
+  }
+
+  .side-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    background: rgb(28 22 18 / 35%);
+  }
+
+  .topbar-title {
+    font-size: 0.98rem;
+  }
+
+  .topbar-week .week-label {
+    min-width: 8rem;
+  }
+
+  .cal-view-label {
+    display: none;
+  }
+
+  /* Sieben Spalten passen auf ein Handy nicht – lieber seitlich schieben. */
+  .cal-body {
+    overflow-x: auto;
+  }
+
+  .tg {
+    min-width: calc(var(--gutter) + var(--cols) * 5.5rem);
+  }
+
+  .cal-title {
+    order: 10;
+    width: 100%;
+    margin: 0;
+  }
+
+  .mg-weekday-long {
+    display: none;
+  }
+
+  .mg-weekday-short {
+    display: inline;
+  }
+
+  .mg-cell {
+    min-height: 4.5rem;
+  }
+
+  .agenda-time {
+    flex-basis: 4.5rem;
+  }
 }

@@ -149,25 +149,45 @@ export function createSupabaseAdapter(householdId: string): StorageAdapter {
     },
 
     subscribe<T>(key: string, onChange: (data: T) => void): () => void {
-      const channel = sb
-        .channel(`planner_docs:${householdId}:${key}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'planner_docs',
-            filter: `household_id=eq.${householdId}`,
-          },
-          (payload) => {
-            const row = payload.new as { key?: string; data?: unknown } | null
-            if (row?.key === key && row.data) onChange(row.data as T)
-          },
-        )
-        .subscribe()
-      return () => {
-        void sb.removeChannel(channel)
-      }
+      return listen(sb, householdId, key, (_, data) => onChange(data as T))
     },
+
+    subscribeAll(onChange: (key: string, data: unknown) => void): () => void {
+      return listen(sb, householdId, null, onChange)
+    },
+  }
+}
+
+/**
+ * Ein Realtime-Kanal auf die Dokumente des Haushalts. Gefiltert wird der
+ * Schlüssel hier im Client: Supabase liefert ohnehin alle Änderungen des
+ * Haushalts, und ein Kanal je Dokument wäre reine Verschwendung.
+ */
+function listen(
+  sb: SupabaseClient,
+  householdId: string,
+  key: string | null,
+  onChange: (key: string, data: unknown) => void,
+): () => void {
+  const channel = sb
+    .channel(`planner_docs:${householdId}:${key ?? '*'}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'planner_docs',
+        filter: `household_id=eq.${householdId}`,
+      },
+      (payload) => {
+        const row = payload.new as { key?: string; data?: unknown } | null
+        if (!row?.key || row.data === undefined || row.data === null) return
+        if (key !== null && row.key !== key) return
+        onChange(row.key, row.data)
+      },
+    )
+    .subscribe()
+  return () => {
+    void sb.removeChannel(channel)
   }
 }

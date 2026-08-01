@@ -34,6 +34,13 @@ Kleine Dinge, die später viel Arbeit sparen. Zwei davon waren eigentlich Lücke
   Migration alter Daten — die reinen Funktionen in `src/lib`. Nicht abgedeckt sind die
   React-Komponenten; dafür bräuchte es jsdom und eine Testbibliothek.
 
+## Zwischendurch: Kalender-Oberfläche ✅ erledigt
+
+Nicht aus der Liste unten, sondern auf Zuruf: Die Termine sehen jetzt aus und funktionieren wie
+ein gewohnter Terminkalender — Seitenleiste mit kleinem Monatskalender und Personenfilter,
+Befehlsleiste, und fünf Ansichten (Tag, Arbeitswoche, Woche, Monat, Agenda). Dafür hält
+`usePlanner` seit diesem Umbau mehrere Wochendokumente gleichzeitig statt nur eines.
+
 ## Phase 2 — Alltag
 
 Das, was jede Woche Zeit oder Diskussionen spart.

@@ -12,4 +12,10 @@ export interface StorageAdapter {
   save<T>(key: string, data: T): Promise<void>
   /** Optional: Änderungen von anderen Geräten live empfangen. */
   subscribe?<T>(key: string, onChange: (data: T) => void): () => void
+  /**
+   * Wie `subscribe`, aber für alle Dokumente auf einmal. Der Kalender hält
+   * mehrere Wochen gleichzeitig offen – ein Kanal für alle ist sparsamer
+   * als einer je Woche.
+   */
+  subscribeAll?(onChange: (key: string, data: unknown) => void): () => void
 }

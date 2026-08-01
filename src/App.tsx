@@ -19,9 +19,12 @@ import {
   supabaseConfigured,
 } from './storage/supabase'
 import { fromISODate, formatRange, isoWeekNumber } from './lib/week'
+import { occurrencesOn, spansOn } from './lib/calendar'
+import type { CalendarView as ViewKey } from './lib/calendar'
 import { MealPlan } from './components/MealPlan'
 import { ShoppingList } from './components/ShoppingList'
-import { Schedule } from './components/Schedule'
+import { CalendarView } from './components/calendar/CalendarView'
+import { MiniMonth } from './components/calendar/MiniMonth'
 import { RecipeLibrary } from './components/RecipeLibrary'
 import { SettingsSheet } from './components/SettingsSheet'
 import { AuthScreen } from './components/AuthScreen'
@@ -29,12 +32,12 @@ import { HouseholdScreen } from './components/HouseholdScreen'
 import { NewPasswordScreen } from './components/NewPasswordScreen'
 import { SetupNotice } from './components/SetupNotice'
 
-type Tab = 'essen' | 'einkauf' | 'termine' | 'rezepte'
+type Tab = 'termine' | 'essen' | 'einkauf' | 'rezepte'
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
+  { key: 'termine', label: 'Kalender', icon: '📅' },
   { key: 'essen', label: 'Essensplan', icon: '🍽️' },
   { key: 'einkauf', label: 'Einkauf', icon: '🛒' },
-  { key: 'termine', label: 'Termine', icon: '📅' },
   { key: 'rezepte', label: 'Rezepte', icon: '📖' },
 ]
 
@@ -101,29 +104,27 @@ function SplashScreen() {
 }
 
 function Planner({ session, householdId }: { session: Session; householdId: string }) {
-  const [tab, setTab] = useState<Tab>('essen')
+  const [tab, setTab] = useState<Tab>('termine')
+  const [view, setView] = useState<ViewKey>(() =>
+    // Auf dem Handy ist die Woche zu eng; dort startet der Kalender als Agenda.
+    typeof window !== 'undefined' && window.innerWidth < 720 ? 'agenda' : 'woche',
+  )
   const [showSettings, setShowSettings] = useState(false)
-
+  const [sideOpen, setSideOpen] = useState(false)
+  const [hidden, setHidden] = useState<Set<string>>(() => new Set())
   const [reminders, setReminders] = useState<ReminderPrefs>(loadReminderPrefs)
 
   const adapter = useMemo(() => createSupabaseAdapter(householdId), [householdId])
   const cache = useMemo(() => createLocalCache(householdId), [householdId])
 
-  const {
-    weekStart,
-    week,
-    series,
-    spans,
-    settings,
-    sync,
-    updateWeek,
-    updateSeries,
-    updateSpans,
-    updateSettings,
-    goToWeek,
-    goToToday,
-  } = usePlanner(adapter, cache)
+  const planner = usePlanner(adapter, cache)
+  const { anchor, setAnchor, weekStart, week, weeks, series, spans, settings, sync } = planner
   const library = useRecipes(householdId)
+
+  const visible = useMemo(
+    () => new Set(settings.people.map((p) => p.id).filter((id) => !hidden.has(id))),
+    [settings.people, hidden],
+  )
 
   const updateReminders = useCallback((patch: Partial<ReminderPrefs>) => {
     setReminders((current) => {
@@ -153,97 +154,172 @@ function Planner({ session, householdId }: { session: Session; householdId: stri
     })
   }, [reminders.push])
 
+  /** Punkte im kleinen Kalender – nur für Wochen, die ohnehin geladen sind. */
+  const hasEntries = useCallback(
+    (date: string) =>
+      occurrencesOn(date, weeks, series).length > 0 || spansOn(spans, date).length > 0,
+    [weeks, series, spans],
+  )
+
+  const pick = (next: Tab) => {
+    setTab(next)
+    setSideOpen(false)
+  }
+
   return (
-    <div className="app">
-      <header className="app-head">
-        <div className="head-top">
-          <h1>
-            <span aria-hidden="true">🗓️</span> Familien-Wochenplan
-          </h1>
+    <div className="shell">
+      {sideOpen && <div className="side-scrim" onClick={() => setSideOpen(false)} />}
+
+      <aside className={sideOpen ? 'side open' : 'side'}>
+        <div className="side-head">
+          <span className="side-logo" aria-hidden="true">
+            🗓️
+          </span>
+          <span className="side-title">Wochenplan</span>
           <button
-            className="icon-btn"
-            onClick={() => setShowSettings(true)}
-            aria-label="Einstellungen"
+            className="icon-btn side-close"
+            onClick={() => setSideOpen(false)}
+            aria-label="Menü schließen"
           >
-            ⚙️
+            ✕
           </button>
         </div>
 
-        <div className="week-nav">
-          <button className="icon-btn" onClick={() => goToWeek(-1)} aria-label="Vorherige Woche">
-            ‹
-          </button>
-          <button className="week-label" onClick={goToToday} title="Zur aktuellen Woche">
-            <strong>KW {isoWeekNumber(fromISODate(weekStart))}</strong>
-            <span>{formatRange(weekStart)}</span>
-          </button>
-          <button className="icon-btn" onClick={() => goToWeek(1)} aria-label="Nächste Woche">
-            ›
-          </button>
-        </div>
-
-        <nav className="tabs" role="tablist">
+        <nav className="side-nav" aria-label="Bereiche">
           {TABS.map((t) => (
             <button
               key={t.key}
-              role="tab"
-              aria-selected={tab === t.key}
-              className={tab === t.key ? 'tab active' : 'tab'}
-              onClick={() => setTab(t.key)}
+              className={tab === t.key ? 'side-item on' : 'side-item'}
+              onClick={() => pick(t.key)}
+              aria-current={tab === t.key ? 'page' : undefined}
             >
-              <span aria-hidden="true">{t.icon}</span>
-              <span className="tab-label">{t.label}</span>
+              <span aria-hidden="true">{t.icon}</span> {t.label}
             </button>
           ))}
         </nav>
-      </header>
 
-      <main className="app-main">
-        {!week ? (
-          <p className="muted">Wird geladen …</p>
-        ) : tab === 'essen' ? (
-          <MealPlan
-            week={week}
-            settings={settings}
-            recipes={library.all}
-            recipeById={library.byId}
-            onChange={updateWeek}
-          />
-        ) : tab === 'einkauf' ? (
-          <ShoppingList
-            week={week}
-            settings={settings}
-            recipeById={library.byId}
-            onChange={updateWeek}
-          />
-        ) : tab === 'termine' ? (
-          <Schedule
-            week={week}
-            series={series}
-            spans={spans}
-            settings={settings}
-            onChange={updateWeek}
-            onSeriesChange={updateSeries}
-            onSpansChange={updateSpans}
-            onSettingsChange={updateSettings}
-          />
-        ) : (
-          <RecipeLibrary settings={settings} library={library} />
+        {tab === 'termine' && (
+          <>
+            <MiniMonth
+              selected={anchor}
+              onSelect={setAnchor}
+              hasEntries={hasEntries}
+              highlightWeek={view === 'monat' || view === 'agenda' ? null : weekStart}
+            />
+
+            <div className="side-section">
+              <h3>Meine Kalender</h3>
+              <ul className="side-people">
+                {settings.people.map((person) => (
+                  <li key={person.id}>
+                    <label className="switch-row">
+                      <input
+                        type="checkbox"
+                        checked={!hidden.has(person.id)}
+                        style={{ accentColor: person.color }}
+                        onChange={(e) =>
+                          setHidden((current) => {
+                            const next = new Set(current)
+                            if (e.target.checked) next.delete(person.id)
+                            else next.add(person.id)
+                            return next
+                          })
+                        }
+                      />
+                      <span>
+                        {person.emoji} {person.name}
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+              <p className="muted small">
+                Termine ohne ausdrückliche Auswahl gelten für alle und bleiben immer sichtbar.
+              </p>
+            </div>
+          </>
         )}
-      </main>
 
-      <footer className="app-foot">
-        <span className={sync === 'offline' ? 'sync-offline' : undefined}>
-          {sync === 'gespeichert' && 'Gespeichert und auf allen Geräten synchron'}
-          {sync === 'lädt' && 'Lädt …'}
-          {sync === 'offline' && 'Offline – Änderungen liegen auf diesem Gerät bereit'}
-        </span>
-      </footer>
+        <button className="side-item side-foot" onClick={() => setShowSettings(true)}>
+          <span aria-hidden="true">⚙️</span> Einstellungen
+        </button>
+      </aside>
+
+      <div className="pane">
+        <header className="topbar">
+          <button
+            className="icon-btn topbar-menu"
+            onClick={() => setSideOpen(true)}
+            aria-label="Menü öffnen"
+          >
+            ☰
+          </button>
+          <h1 className="topbar-title">{TABS.find((t) => t.key === tab)?.label}</h1>
+
+          {tab !== 'termine' && (
+            <div className="topbar-week">
+              <button
+                className="icon-btn"
+                onClick={() => planner.goToWeek(-1)}
+                aria-label="Vorherige Woche"
+              >
+                ‹
+              </button>
+              <button
+                className="week-label"
+                onClick={planner.goToToday}
+                title="Zur aktuellen Woche"
+              >
+                <strong>KW {isoWeekNumber(fromISODate(weekStart))}</strong>
+                <span>{formatRange(weekStart)}</span>
+              </button>
+              <button
+                className="icon-btn"
+                onClick={() => planner.goToWeek(1)}
+                aria-label="Nächste Woche"
+              >
+                ›
+              </button>
+            </div>
+          )}
+
+          <span className={`topbar-sync${sync === 'offline' ? ' offline' : ''}`}>
+            {sync === 'gespeichert' && '✓ Synchron'}
+            {sync === 'lädt' && 'Lädt …'}
+            {sync === 'offline' && 'Offline'}
+          </span>
+        </header>
+
+        <main className={tab === 'termine' ? 'pane-body flush' : 'pane-body'}>
+          {tab === 'termine' ? (
+            <CalendarView planner={planner} visible={visible} view={view} onViewChange={setView} />
+          ) : !week ? (
+            <p className="muted">Wird geladen …</p>
+          ) : tab === 'essen' ? (
+            <MealPlan
+              week={week}
+              settings={settings}
+              recipes={library.all}
+              recipeById={library.byId}
+              onChange={planner.updateWeek}
+            />
+          ) : tab === 'einkauf' ? (
+            <ShoppingList
+              week={week}
+              settings={settings}
+              recipeById={library.byId}
+              onChange={planner.updateWeek}
+            />
+          ) : (
+            <RecipeLibrary settings={settings} library={library} />
+          )}
+        </main>
+      </div>
 
       {showSettings && (
         <SettingsSheet
           settings={settings}
-          onChange={updateSettings}
+          onChange={planner.updateSettings}
           reminders={reminders}
           onRemindersChange={updateReminders}
           session={session}

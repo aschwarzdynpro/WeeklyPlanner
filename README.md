@@ -26,18 +26,29 @@ Abende dann reihum, egal ob auf zwei oder vier Personen.
 zusammengezählt und nach Kategorien sortiert (Obst & Gemüse, Fleisch & Fisch …). Abhaken beim
 Einkaufen, eigene Artikel ergänzen, per Knopfdruck als Text für WhatsApp kopieren.
 
-**Termine** — pro Tag Termine mit Uhrzeit, Ort, Notiz und den Teilnehmern (mehrere gleichzeitig,
-ohne Auswahl gilt der Termin für alle). Was keine Uhrzeit hat, sondern einen Zeitraum — Urlaub,
-Kita-Schließtage, eine Dienstreise —, steht als Balken über der Woche und in jedem betroffenen
-Tag; solche Zeiträume dürfen über Wochengrenzen hinausgehen. Was sich regelmäßig wiederholt,
-wird zum **Serientermin**: wöchentlich bis vierwöchentlich, auf Wunsch mit Enddatum. Ein
-einzelner Tag einer Serie lässt sich verschieben oder absagen, ohne die übrigen anzufassen.
-Zu jedem Termin lässt sich eine **Erinnerung** stellen, von zehn Minuten bis einen Tag vorher —
-siehe [Erinnerungen](#erinnerungen). In jedem Tag steht fest der
-Bettdienst-Balken von 19:00 bis 20:00 Uhr, in der Farbe der Person, die dran ist. Der Dienst
-wechselt täglich und läuft über das Wochenende hinweg weiter, sodass sich die Abende über zwei
-Wochen (bei zwei Personen) gleichmäßig verteilen. Ein Tipp auf den Balken reicht einen einzelnen
-Tag weiter, „Rotation verschieben“ dreht die ganze Reihenfolge.
+**Kalender** — aufgebaut wie ein gewohnter Terminkalender: links die Navigation mit dem kleinen
+Monatskalender zum Springen und den Personen zum Ein- und Ausblenden, oben die Befehlsleiste mit
+„Neuer Termin“, „Heute“ und dem Umschalter zwischen **Tag, Arbeitswoche, Woche, Monat und
+Agenda**.
+
+In Tag, Arbeitswoche und Woche liegen die Termine als Balken im Zeitraster, in der Farbe der
+beteiligten Person; was sich zeitlich überschneidet, teilt sich die Spaltenbreite. Eine rote Linie
+zeigt die aktuelle Uhrzeit, ein Klick auf eine freie Stelle legt dort einen Termin an. Die
+Monatsansicht zeigt sechs Wochen mit den Terminen als Zeilen, die Agenda alles Anstehende der
+nächsten vier Wochen als Liste — auf dem Handy die schnellste Antwort auf „was ist heute noch?“.
+
+Ein Termin hat Uhrzeit, Ort, Notiz und Teilnehmer (mehrere gleichzeitig, ohne Auswahl gilt er für
+alle). Was keine Uhrzeit hat, sondern einen Zeitraum — Urlaub, Kita-Schließtage, eine Dienstreise
+—, steht in der Ganztags-Zeile über dem Raster und darf über Wochengrenzen hinausgehen. Was sich
+regelmäßig wiederholt, wird zum **Serientermin**: wöchentlich bis vierwöchentlich, auf Wunsch mit
+Enddatum. Ein einzelner Tag einer Serie lässt sich verschieben oder absagen, ohne die übrigen
+anzufassen. Zu jedem Termin lässt sich eine **Erinnerung** stellen, von zehn Minuten bis einen Tag
+vorher — siehe [Erinnerungen](#erinnerungen).
+
+Abends steht im Raster der Bettdienst-Balken von 19:00 bis 20:00 Uhr, in der Farbe der Person, die
+dran ist. Der Dienst wechselt täglich und läuft über das Wochenende hinweg weiter, sodass sich die
+Abende über zwei Wochen (bei zwei Personen) gleichmäßig verteilen. Ein Tipp auf den Balken reicht
+einen einzelnen Tag weiter, „Rotation verschieben“ dreht die ganze Reihenfolge.
 
 Eine ausdruckbare Fassung von Plan, Rezepten und Einkaufsliste liegt unter
 [`docs/Wochenplan.md`](docs/Wochenplan.md).
@@ -252,16 +263,18 @@ src/
   lib/week.ts             Wochenlogik: Kalenderwoche, Datumsrechnung, Bettdienst-Rotation
   lib/series.ts           Serientermine in die Termine einer Woche ausklappen
   lib/spans.ts            Zeiträume, die über Wochengrenzen hinauslaufen
+  lib/calendar.ts         Datumsbereiche der Ansichten und Verteilung überlappender Termine
   lib/shopping.ts         Einkaufsliste aus dem Wochenplan berechnen und gruppieren
   lib/notifications.ts    Erlaubnis, Service Worker und Einstellungen je Gerät
   lib/*.test.ts           Tests der Rechenlogik (`npm test`)
   storage/local.ts        Offline-Kopie im Browser, getrennt je Haushalt
   storage/supabase.ts     Login, Haushalte und Datenspeicher inkl. Realtime
   storage/push.ts         An- und Abmelden beim Push-Dienst des Browsers
-  hooks/usePlanner.ts     Laden, Speichern (entprellt) und Wochenwechsel
+  hooks/usePlanner.ts     Hält so viele Wochen, wie die Ansicht braucht, und speichert sie
   hooks/useHouseholdDoc.ts  Dokumente, die dem Haushalt gehören statt einer Woche
   hooks/useReminders.ts   Prüft im Minutentakt, welche Erinnerung fällig ist
-  components/             Oberfläche: Login, Essensplan, Einkauf, Termine, Rezepte, Einstellungen
+  components/calendar/    Kalender: Befehlsleiste, Zeitraster, Monat, Agenda, Mini-Kalender
+  components/             Übrige Oberfläche: Login, Essensplan, Einkauf, Rezepte, Einstellungen
 supabase/migrations/      SQL-Schema für Supabase
 supabase/functions/       Edge Functions: Rezepte erzeugen, Erinnerungen verschicken
 scripts/generate-plan.ts  Erzeugt docs/Wochenplan.md aus den Rezeptdaten (`npm run plan`)
@@ -280,8 +293,14 @@ Bettdienst und in den Push-Abos auf und ändert sich nie — der angezeigte Name
 mitgelieferten behalten die ids `mama`, `papa` und `kind`, mit denen schon vorher gespeichert
 wurde; deshalb ist beim Umstieg nichts umzuschreiben.
 
-Die Rechenlogik — Kalenderwoche, Bettdienst-Rotation, Serien, Zeiträume und Einkaufsliste — liegt
-in `src/lib` als reine Funktionen ohne Oberfläche und ist dort mit Tests abgedeckt:
+Die Ansichten selbst halten keine Daten: `usePlanner` lädt so viele Wochendokumente, wie der
+sichtbare Zeitraum berührt — eines für die Tagesansicht, sechs für den Monat — und schreibt jedes
+einzeln zurück. Ein Termin, der auf einen Tag in einer anderen Woche gezogen wird, wandert dabei
+aus dem einen Dokument in das andere.
+
+Die Rechenlogik — Kalenderwoche, Bettdienst-Rotation, Serien, Zeiträume, Einkaufsliste und die
+Verteilung überlappender Termine — liegt in `src/lib` als reine Funktionen ohne Oberfläche und ist
+dort mit Tests abgedeckt:
 
 ```bash
 npm test

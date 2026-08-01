@@ -44,6 +44,20 @@ export function createLocalCache(namespace: string): StorageAdapter {
       window.addEventListener('storage', handler)
       return () => window.removeEventListener('storage', handler)
     },
+
+    subscribeAll(onChange: (key: string, data: unknown) => void): () => void {
+      const start = `${PREFIX}${namespace}:`
+      const handler = (e: StorageEvent) => {
+        if (!e.key?.startsWith(start) || !e.newValue) return
+        try {
+          onChange(e.key.slice(start.length), JSON.parse(e.newValue))
+        } catch {
+          /* ignorieren */
+        }
+      }
+      window.addEventListener('storage', handler)
+      return () => window.removeEventListener('storage', handler)
+    },
   }
 }
 
